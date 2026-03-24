@@ -1,0 +1,114 @@
+/* --- A BARRA PRINCIPAL --- */
+.navbar {
+  display: flex;
+  justify-content: space-between; /* Empurra Esquerda e Direita para as pontas */
+  align-items: center; /* Centraliza verticalmente */
+  padding: 10px 40px;
+  min-height: 90px; /* Altura garantida */
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* --- LADO ESQUERDO: O GRUPO DA MARCA --- */
+.brand-group {
+  display: flex;
+  flex-direction: column; /* AQUI O TRUQUE: Empilha Logo e Texto */
+  align-items: center;    /* Centraliza um sobre o outro */
+  justify-content: center;
+  text-decoration: none;
+  gap: 5px;
+}
+
+.logo-img {
+  height: 45px;
+  width: auto;
+}
+
+.brand-name {
+  font-family: 'Georgia', serif;
+  font-size: 0.8rem;
+  color: #6667AB;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  line-height: 1;
+}
+
+/* --- LADO DIREITO: MENU E ÍCONES --- */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 25px; /* Espaço entre menu, bonequinho e sacola */
+}
+
+/* Os Links de Texto (Início, Coleções...) */
+.nav-links {
+  display: flex;
+  gap: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: #555;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.3s;
+  font-weight: 500;
+}
+
+.nav-links a:hover {
+  color: #6667AB;
+}
+
+/* O Ícone de Usuário (Bonequinho) */
+.user-icon {
+  text-decoration: none;
+  font-size: 1.5rem;
+  color: #555;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.user-icon:hover {
+  transform: scale(1.1);
+  color: #6667AB;
+}
+
+/* Botão Sacola */
+.cart-button {
+  background-color: #6667AB;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.cart-button:hover {
+  background-color: #545596;
+  transform: translateY(-2px);
+}
+
+/* --- RESPONSIVIDADE (Celular/Tablet) --- */
+@media (max-width: 900px) {
+  .nav-links {
+    display: none; /* Esconde o menu escrito em telas pequenas */
+  }
+  .navbar {
+    padding: 10px 20px;
+  }
+}

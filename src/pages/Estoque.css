@@ -1,0 +1,44 @@
+/* Adicione ao seu Estoque.css */
+.grid-fornecedores {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.card-fornecedor {
+  background: #fff;
+  border: 1px solid #f5e6ba;
+  padding: 20px;
+  border-radius: 15px;
+  position: relative;
+}
+
+.card-fornecedor h4 {
+  margin: 0 0 10px 0;
+  color: #5d4037;
+  font-family: 'Playfair Display', serif;
+  border-bottom: 1px solid #fdfaf3;
+  padding-bottom: 5px;
+}
+
+.info-fornecedor {
+  font-size: 13px;
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.info-label { color: #888; font-weight: bold; }
+
+.btn-contato {
+  width: 100%;
+  margin-top: 15px;
+  background: #25d366; /* Cor do WhatsApp */
+  color: white;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}

@@ -1,0 +1,99 @@
+/* IDENTIDADE CAMÉLIA - VERY PERI & GOLD */
+:root {
+  --very-peri: #6667AB; /* Pantone 17-3938 */
+  --dourado-camelia: #D4AF37;
+  --marrom-suave: #4A4A4A;
+  --bege-fundo: #F8F8FC; /* Um fundo levemente frio para combinar com o Very Peri */
+  --branco: #FFFFFF;
+}
+
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  background-color: var(--bege-fundo);
+  font-family: 'Inter', sans-serif;
+}
+
+/* SIDEBAR ESTÉTICA */
+.sidebar {
+  width: 230px;
+  background-color: var(--branco);
+  border-right: 1px solid rgba(102, 103, 171, 0.1);
+  display: flex;
+  flex-direction: column;
+  padding: 25px 15px;
+}
+
+.brand-area {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.brand-logo-text {
+  font-family: 'Playfair Display', serif;
+  color: var(--very-peri);
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
+.brand-subtitle {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--dourado-camelia);
+  font-weight: 600;
+}
+
+/* MENU DE NAVEGAÇÃO */
+.menu-item {
+  padding: 12px 18px;
+  color: var(--marrom-suave);
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.menu-item:hover {
+  background-color: rgba(102, 103, 171, 0.05);
+  color: var(--very-peri);
+}
+
+.menu-item.active {
+  background-color: var(--very-peri);
+  color: white !important;
+  box-shadow: 0 4px 15px rgba(102, 103, 171, 0.3);
+}
+
+/* BOTÕES GERAIS DO SISTEMA */
+.btn-camelia {
+  background-color: var(--very-peri);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-camelia-gold {
+  background-color: var(--dourado-camelia);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* QUADROS (CARDS) */
+.quadro-branco {
+  background: white;
+  padding: 30px;
+  border-radius: 20px;
+  border: 1px solid rgba(102, 103, 171, 0.05);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.02);
+}

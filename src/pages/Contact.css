@@ -1,0 +1,107 @@
+.contact-container {
+  min-height: 80vh;
+  background-color: #FAF9F6; /* Off-white elegante */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.contact-card {
+  background-color: white;
+  width: 100%;
+  max-width: 600px; /* Largura ideal para leitura */
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(102, 103, 171, 0.1); /* Sombra roxa suave */
+  border: 1px solid #f0f0f0;
+}
+
+/* Títulos */
+.contact-title {
+  font-family: 'Georgia', serif;
+  color: #6667AB; /* Roxo Very Peri */
+  text-align: center;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.contact-subtitle {
+  text-align: center;
+  color: #8888a0;
+  line-height: 1.6;
+  margin-bottom: 30px;
+  font-size: 1rem;
+}
+
+/* Formulário */
+.form-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  background-color: #fcfcfc;
+  transition: all 0.3s;
+  width: 100%; /* Garante que preencha o espaço */
+  box-sizing: border-box; /* Evita que o padding estoure a largura */
+}
+
+/* Efeito ao clicar no campo */
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #6667AB;
+  background-color: white;
+  box-shadow: 0 0 0 3px rgba(102, 103, 171, 0.1);
+}
+
+/* Botão */
+.submit-button {
+  width: 100%;
+  padding: 15px;
+  background-color: #6667AB;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  margin-top: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.submit-button:hover {
+  background-color: #545596;
+  transform: translateY(-2px);
+}
+
+/* Rodapé do cartão */
+.contact-footer {
+  margin-top: 30px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #aaa;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+}
+
+.contact-footer strong {
+  color: #6667AB;
+}

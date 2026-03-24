@@ -1,0 +1,34 @@
+.about-container {
+  max-width: 800px;
+  margin: 60px auto;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.about-container h1 {
+  font-family: 'Georgia', serif;
+  font-size: 2.5rem;
+  color: #6667AB; /* Título em Very Peri */
+  margin-bottom: 30px;
+  letter-spacing: 1px;
+}
+
+.about-content {
+  line-height: 1.8;
+  font-size: 1.1rem;
+  color: #5a5a70; /* Um cinza-azulado para o texto (combina com o Very Peri) */
+}
+
+/* Se quiser destacar parágrafos específicos */
+.about-content p {
+  margin-bottom: 20px;
+}
+
+/* Um toque especial na assinatura ou frase final */
+.about-highlight {
+  color: #6667AB;
+  font-weight: bold;
+  font-style: italic;
+  margin-top: 30px;
+  display: block;
+}
