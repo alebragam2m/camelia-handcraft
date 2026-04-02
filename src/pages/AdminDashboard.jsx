@@ -77,7 +77,7 @@ function AdminDashboard() {
     price: '', 
     cost: '', 
     category: 'Porta Guardanapos', 
-    colecao: 'Flores', 
+    colecao: 'Sem linha / Coleção', 
     stock: '', 
     description: '' 
   });
@@ -147,26 +147,43 @@ function AdminDashboard() {
     e.preventDefault();
     setIsSavingProduct(true);
     try {
-      // A variável "user" não é necessária para o cadastro de produtos na estrutura atual
-      const photoUrls = [];
-      for (const file of selectedFiles) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `products/${fileName}`;
-        const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file);
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
-        photoUrls.push(publicUrl);
+      // 1. Gravar inicialmente o produto sem foto para garantir o ID rápido
+      const payload = {
+        nome: formData.nome,
+        price: parseFloat(formData.price) || 0,
+        cost: parseFloat(formData.cost) || 0,
+        category: formData.category,
+        colecao: formData.colecao,
+        stock: parseInt(formData.stock) || 0,
+        description: formData.description
+      };
+      
+      const newProduct = await actions.upsertProduct(payload);
+      const targetId = newProduct?.id;
+
+      if (!targetId) throw new Error("O servidor não confirmou o ID do novo produto. Verifique sua conexão.");
+
+      // 2. Se houver fotos, fazer upload vinculando ao ID
+      if (selectedFiles.length > 0) {
+        const photoUrls = [];
+        for (const file of selectedFiles) {
+          const fileExt = file.name.split('.').pop();
+          const filePath = `products/${targetId}/${Date.now()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file);
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
+            photoUrls.push(publicUrl);
+          }
+        }
+        
+        // 3. Atualizar produto com o link da primeira imagem se o upload deu certo
+        if (photoUrls.length > 0) {
+          await actions.upsertProduct({ image_url: photoUrls[0] }, targetId);
+        }
       }
       
-      // MOTOR PRO V2: Cadastro Reativo no Catálogo (Removido user_id inconsistente)
-      await actions.upsertProduct({ 
-        ...formData, 
-        image_url: photoUrls.length > 0 ? photoUrls[0] : null 
-      });
-      
       setIsProductModalOpen(false);
-      setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Flores', stock: '', description: '' });
+      setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Sem linha / Coleção', stock: '', description: '' });
       setSelectedFiles([]);
     } catch (err) { alert("Erro ao criar produto: " + err.message); }
     setIsSavingProduct(false);
@@ -627,8 +644,20 @@ function AdminDashboard() {
                      <input type="number" placeholder="Custo Un." value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
                    
                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Categoria Principal</label>
+                      <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="px-4 py-3 border rounded-xl font-bold bg-white text-secundaria">
+                         <option value="Porta Guardanapos">Porta Guardanapos</option>
+                         <option value="Guardanapos">Guardanapos</option>
+                         <option value="Jogos Americanos">Jogos Americanos</option>
+                         <option value="Insumos">Insumos / Suprimentos</option>
+                         <option value="Diversos">Diversos</option>
+                      </select>
+                   </div>
+
+                   <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Linha / Coleção</label>
                       <select value={formData.colecao} onChange={e => setFormData({...formData, colecao: e.target.value})} className="px-4 py-3 border rounded-xl font-bold bg-white text-secundaria">
+                         <option value="Sem linha / Coleção">Sem linha / Coleção</option>
                          <option value="Flores">Flores</option>
                          <option value="Frutas e legumes">Frutas e Legumes</option>
                          <option value="Provence">Provence</option>

@@ -24,7 +24,7 @@ const CATEGORY_COLORS = {
 
 const defaultForm = {
   nome: '', price: '', cost: '', category: 'Porta Guardanapos',
-  colecao: 'Flores', stock: '', description: '',
+  colecao: 'Sem linha / Coleção', stock: '', description: '',
   is_insumo: false, supplier_id: '', measure_cm: '', weight_kg: ''
 };
 
@@ -113,9 +113,10 @@ export default function ProductsModule() {
         res = await actions.upsertProduct(payload);
       }
 
-      const targetId = editProduct ? editProduct.id : res.id;
+      // Segurança: Verifica se o ID foi retornado antes de tentar o upload
+      const targetId = editProduct ? editProduct.id : res?.id;
 
-      if (selectedFiles.length > 0) {
+      if (targetId && selectedFiles.length > 0) {
         const urls = await uploadImages(targetId);
         if (urls.length > 0) {
           await actions.upsertProduct({ image_url: urls[0] }, targetId);
@@ -261,6 +262,7 @@ export default function ProductsModule() {
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Coleção</label>
                     <select value={formData.colecao} onChange={e => setFormData({ ...formData, colecao: e.target.value })}
                       className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none">
+                      <option value="Sem linha / Coleção">Sem linha / Coleção</option>
                       <option value="Flores">Flores</option>
                       <option value="Frutas e legumes">Frutas e legumes</option>
                       <option value="Provence">Provence</option>

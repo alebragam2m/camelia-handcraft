@@ -41,13 +41,13 @@ export const db = {
   async upsertProduct(product, id = null) {
     return retry(async () => {
       if (id) {
-        const { data, error } = await supabase.from('products').update(product).eq('id', id).select().single();
+        const { data, error } = await supabase.from('products').update(product).eq('id', id).select('*');
         if (error) throw error;
-        return data;
+        return data?.[0];
       } else {
-        const { data, error } = await supabase.from('products').insert([product]).select().single();
+        const { data, error } = await supabase.from('products').insert([product]).select('*');
         if (error) throw error;
-        return data;
+        return data?.[0];
       }
     });
   },
