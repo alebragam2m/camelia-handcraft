@@ -54,7 +54,7 @@ function Login() {
       {/* Glow Effects */}
       <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none" style={{background: 'radial-gradient(circle at 10% 10%, #6667AB, transparent 50%), radial-gradient(circle at 90% 90%, #6667AB, transparent 50%)'}}></div>
       
-      <img src="/logo camelia vetor (1).svg" onError={(e) => { e.target.src = '/logo.png' }} alt="Camélia Logo" className="h-20 mb-8 relative z-10 drop-shadow-md" />
+      <img src="/logo camelia vetor (1).svg" onError={(e) => { e.target.src = '/logo.png' }} alt="Camélia Logo" className="h-28 mb-8 relative z-10 drop-shadow-md" />
 
       <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-2xl w-full max-w-md relative z-10 border border-gray-50">
         <h2 className="text-3xl font-serif text-center font-bold text-secundaria mb-2">Minha Conta</h2>
