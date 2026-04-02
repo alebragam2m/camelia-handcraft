@@ -12,19 +12,19 @@ import { db } from '../services/db';
 import { useData } from '../context/DataContext';
 
 function AdminDashboard() {
-  const { isOnline } = useData();
+  const { 
+    isOnline, 
+    products: produtos, 
+    sales: vendas, 
+    clients: clientes, 
+    loading, 
+    actions 
+  } = useData();
 
   const [activeTab, setActiveTab] = useState('visao_geral');
   const [userRole, setUserRole] = useState('Vendedor');
   const isAdmin = userRole === 'Admin';
   
-  // --- ESTADOS DE DADOS (Restaurados para Local) ---
-  const [produtos, setProdutos] = useState([]);
-  const [vendas, setVendas] = useState([]);
-  const [clientes, setClientes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [lastSync, setLastSync] = useState(null);
-
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
@@ -32,28 +32,6 @@ function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const navigate = useNavigate();
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const [p, s, c] = await Promise.all([
-        db.getProducts(),
-        db.getSales(),
-        db.getClients()
-      ]);
-      setProdutos(p);
-      setVendas(s);
-      setClientes(c);
-      setLastSync(new Date());
-    } catch (err) {
-      console.error("Erro ao carregar dados:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const detectUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -125,7 +103,6 @@ function AdminDashboard() {
 
   useEffect(() => { 
     detectUserRole(); 
-    fetchData();
   }, []);
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/login'); };
@@ -135,10 +112,10 @@ function AdminDashboard() {
     e.preventDefault();
     setIsSavingClient(true);
     try {
-      await db.upsertClient({ ...clientForm, whatsapp: clientForm.is_whatsapp ? clientForm.phone : clientForm.whatsapp });
+      // MOTOR PRO V2: Cadastro Reativo no CRM
+      await actions.upsertClient({ ...clientForm, whatsapp: clientForm.is_whatsapp ? clientForm.phone : clientForm.whatsapp });
       setIsClientModalOpen(false);
       setClientForm(defaultClientForm);
-      fetchData();
     } catch (err) { alert("Erro ao registrar cliente: " + err.message); }
     setIsSavingClient(false);
   };
@@ -149,9 +126,9 @@ function AdminDashboard() {
     e.preventDefault();
     setIsSavingClient(true);
     try {
-      await db.upsertClient(selectedClient, selectedClient.id);
+      // MOTOR PRO V2: Update Reativo no CRM
+      await actions.upsertClient(selectedClient, selectedClient.id);
       setIsClientDossierOpen(false);
-      fetchData();
     } catch (err) { alert("Erro no update: " + err.message); }
     setIsSavingClient(false);
   };
@@ -171,11 +148,13 @@ function AdminDashboard() {
         const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
         photoUrls.push(publicUrl);
       }
-      await db.upsertProduct({ ...formData, images: photoUrls, user_id: user.id });
+      
+      // MOTOR PRO V2: Cadastro Reativo no Catálogo
+      await actions.upsertProduct({ ...formData, images: photoUrls, user_id: user.id });
+      
       setIsProductModalOpen(false);
       setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Avulso', stock: '', description: '' });
       setSelectedFiles([]);
-      fetchData();
     } catch (err) { alert("Erro ao criar produto: " + err.message); }
     setIsSavingProduct(false);
   };
@@ -207,13 +186,16 @@ function AdminDashboard() {
     try {
       const itemsToSave = cartItems.map(item => ({
         product_id: item.id,
-        quantity: item.quantity,
-        price_at_time: item.price,
-        cost_at_time: item.cost || 0
+        quantity: parseInt(item.quantity),
+        unit_price: parseFloat(item.price),
+        unit_cost: parseFloat(item.cost || 0)
       }));
       const totalCost = cartItems.reduce((acc, item) => acc + (Number(item.cost || 0) * Number(item.quantity)), 0);
-      await db.createSale({
+      
+      // NOVA CHAMADA ATÔMICA (MOTOR PRO V2 + RPC)
+      await actions.createSale({
         client_id: saleForm.client_id,
+        client_name: clientes.find(c => c.id == saleForm.client_id)?.full_name || 'Consumidor Final',
         payment_method: saleForm.payment_method,
         total_amount: finalSaleTotal,
         total_cost: totalCost,
@@ -221,11 +203,11 @@ function AdminDashboard() {
         discount: discountAmount,
         status: saleForm.status
       }, itemsToSave);
+
       setIsSaleModalOpen(false);
       setCartItems([]);
       setSaleForm({ client_id: '', payment_method: 'Pix', shipping_cost: '', discount: '', status: 'Paga' });
-      fetchData();
-    } catch (err) { alert("Falha na Venda: " + err.message); }
+    } catch (err) { alert("Falha na Venda Atômica: " + err.message); }
     setIsSavingSale(false);
   };
 
@@ -243,7 +225,7 @@ function AdminDashboard() {
   const qtdVendasDia = vendas.filter(v => v.created_at.startsWith(todayStr)).length;
   const qtdVendasMes = vMes.length;
 
-  if (loading && produtos.length === 0) {
+  if (loading && (!produtos || produtos.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-[#F8F8FC] gap-4">
           <div className="w-12 h-12 border-4 border-[#333333]/10 border-t-[#333333] rounded-full animate-spin"></div>

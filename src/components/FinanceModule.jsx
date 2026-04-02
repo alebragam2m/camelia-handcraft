@@ -3,8 +3,7 @@ import { db } from '../services/db';
 import { formatCurrency } from '../utils/formatCurrency';
 
 export default function FinanceModule() {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { transactions, loading, actions } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -14,31 +13,14 @@ export default function FinanceModule() {
   };
   const [formData, setFormData] = useState(defaultForm);
 
-  const fetchTransactions = async () => {
-    setLoading(true);
-    try {
-      const data = await db.getTransactions();
-      setTransactions(data);
-    } catch (err) {
-      console.error("Erro ao carregar finanças:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
   const handleSubmit = async (e) => {
      e.preventDefault();
      setIsSaving(true);
      try {
        const payload = { ...formData, amount: Number(formData.amount.toString().replace(',', '.')) };
-       await db.upsertTransaction(payload);
+       await actions.upsertTransaction(payload);
        setIsModalOpen(false);
        setFormData(defaultForm);
-       fetchTransactions();
      } catch (err) {
        alert("Erro ao salvar: " + err.message);
      } finally {
@@ -49,16 +31,14 @@ export default function FinanceModule() {
   const delTrans = async (id) => {
      if(window.confirm('Excluir este lançamento para sempre? Não há volta.')) {
         try {
-          await db.deleteTransaction(id);
-          fetchTransactions();
+          await actions.deleteTransaction(id);
         } catch (err) { alert("Erro ao excluir: " + err.message); }
      }
   };
   
   const markAsPaid = async (id) => {
      try {
-       await db.upsertTransaction({ status: 'Pago', payment_date: todayStr }, id);
-       fetchTransactions();
+       await actions.upsertTransaction({ status: 'Pago', payment_date: todayStr }, id);
      } catch (err) { alert("Erro ao atualizar status: " + err.message); }
   };
 

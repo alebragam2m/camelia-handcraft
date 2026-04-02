@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 
 export default function SuppliersModule() {
-  const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { suppliers, loading, actions } = useData();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -18,22 +17,6 @@ export default function SuppliersModule() {
     internal_notes: '' 
   };
   const [formData, setFormData] = useState(defaultForm);
-
-  const fetchSuppliers = async () => {
-    setLoading(true);
-    try {
-      const data = await db.getSuppliers();
-      setSuppliers(data);
-    } catch (err) {
-      console.error("Erro ao carregar fornecedores:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSuppliers();
-  }, []);
 
   const handleSubmit = async (e) => {
      e.preventDefault();
@@ -51,10 +34,9 @@ export default function SuppliersModule() {
          internal_notes: formData.internal_notes || null,
        };
 
-       await db.upsertSupplier(payload);
+       await actions.upsertSupplier(payload);
        setIsModalOpen(false);
        setFormData(defaultForm);
-       fetchSuppliers();
      } catch (err) {
        alert("Erro ao salvar parceiro: \n" + err.message);
      } finally {
@@ -65,8 +47,7 @@ export default function SuppliersModule() {
   const handleDelete = async (id, name) => {
       if(window.confirm(`Derrubar permanentemente o contrato/cadastro de ${name}?`)) {
           try {
-            await db.deleteSupplier(id);
-            fetchSuppliers();
+            await actions.deleteSupplier(id);
           } catch (err) { alert("Erro ao excluir: " + err.message); }
       }
   }

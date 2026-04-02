@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
 import { formatCurrency } from '../utils/formatCurrency';
+import { useData } from '../context/DataContext';
 
-export default function StockHistoryModule({ produtos, onStockChange }) {
+export default function StockHistoryModule() {
+  const { products: produtos, actions } = useData();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
-  const [adjustForm, setAdjustForm] = useState({ change_type: 'Entrada', quantity: '', reason: '' });
+  const [adjustForm, setAdjustForm] = useState({ change_type: 'ENTRADA', quantity: '', reason: '' });
 
   const fetchLogs = async (productId) => {
      setLoading(true);
@@ -29,34 +31,27 @@ export default function StockHistoryModule({ produtos, onStockChange }) {
      const qty = parseInt(adjustForm.quantity);
      if(isNaN(qty) || qty <= 0) return alert("Quantidade inválida.");
 
-     const currentStock = selectedProduct.stock;
-     let finalStock = currentStock;
-
-     if(adjustForm.change_type === 'Entrada') finalStock += qty;
-     else finalStock -= qty;
-
-     if(finalStock < 0) return alert("Erro: O estoque não pode ficar negativo.");
+     // Validação de tipo para a RPC (ENTRADA ou SAIDA)
+     const rpcType = adjustForm.change_type.includes('Entrada') ? 'ENTRADA' : 'SAIDA';
+     const finalReason = adjustForm.reason || `Ajuste manual via Painel PCP: ${adjustForm.change_type}`;
 
      try {
-       // Atualiza Produto diretamente
-       await db.upsertProduct({ stock: finalStock }, selectedProduct.id);
-
-       // Grava Auditoria diretamente
-       await db.logInventoryChange({
-          product_id: selectedProduct.id,
-          change_type: adjustForm.change_type,
-          quantity_changed: adjustForm.change_type === 'Entrada' ? qty : -qty,
-          new_stock_total: finalStock,
-          reason: adjustForm.reason || 'Ajuste manual via Painel PCP'
-       });
+       // CHAMADA ATÔMICA PELO MOTOR PRO V2
+       await actions.adjustStock(
+         selectedProduct.id, 
+         qty, 
+         rpcType, 
+         finalReason
+       );
 
        setIsAdjustModalOpen(false);
-       setAdjustForm({ change_type: 'Entrada', quantity: '', reason: '' });
-       setSelectedProduct(null); 
-       alert("Estoque calibrado com sucesso!");
-       if(onStockChange) onStockChange(); // Refresh local no Dashboard pai
+       setAdjustForm({ change_type: 'ENTRADA', quantity: '', reason: '' });
+       
+       // Refresh dos logs locais no modal
+       fetchLogs(selectedProduct.id);
+       alert("Estoque calibrado com sucesso via Motor Pro!");
      } catch (err) {
-       alert("Falha operacional: " + err.message);
+       alert("Falha operacional no Motor: " + err.message);
      }
   }
 
