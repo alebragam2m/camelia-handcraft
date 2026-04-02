@@ -1,7 +1,10 @@
-import { useData } from '../context/DataContext';
+import React, { useState, useEffect } from 'react';
+import { db } from '../services/db';
+import { formatCurrency } from '../utils/formatCurrency';
 
 export default function FinanceModule() {
-  const { transactions, loading, actions } = useData();
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -11,14 +14,31 @@ export default function FinanceModule() {
   };
   const [formData, setFormData] = useState(defaultForm);
 
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const data = await db.getTransactions();
+      setTransactions(data);
+    } catch (err) {
+      console.error("Erro ao carregar finanças:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
   const handleSubmit = async (e) => {
      e.preventDefault();
      setIsSaving(true);
      try {
        const payload = { ...formData, amount: Number(formData.amount.toString().replace(',', '.')) };
-       await actions.addTransaction(payload);
+       await db.upsertTransaction(payload);
        setIsModalOpen(false);
        setFormData(defaultForm);
+       fetchTransactions();
      } catch (err) {
        alert("Erro ao salvar: " + err.message);
      } finally {
@@ -29,14 +49,16 @@ export default function FinanceModule() {
   const delTrans = async (id) => {
      if(window.confirm('Excluir este lançamento para sempre? Não há volta.')) {
         try {
-          await actions.deleteTransaction(id);
+          await db.deleteTransaction(id);
+          fetchTransactions();
         } catch (err) { alert("Erro ao excluir: " + err.message); }
      }
   };
   
   const markAsPaid = async (id) => {
      try {
-       await actions.updateTransaction({ status: 'Pago', payment_date: todayStr }, id);
+       await db.upsertTransaction({ status: 'Pago', payment_date: todayStr }, id);
+       fetchTransactions();
      } catch (err) { alert("Erro ao atualizar status: " + err.message); }
   };
 

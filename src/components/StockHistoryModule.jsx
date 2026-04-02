@@ -1,9 +1,8 @@
-import { formatCurrency } from '../utils/formatCurrency';
 import React, { useState } from 'react';
-import { useData } from '../context/DataContext';
+import { db } from '../services/db';
+import { formatCurrency } from '../utils/formatCurrency';
 
-export default function StockHistoryModule({ produtos }) {
-  const { actions } = useData();
+export default function StockHistoryModule({ produtos, onStockChange }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -14,7 +13,7 @@ export default function StockHistoryModule({ produtos }) {
   const fetchLogs = async (productId) => {
      setLoading(true);
      try {
-       const data = await actions.getStockLogs(productId);
+       const data = await db.getStockLogs(productId);
        setLogs(data || []);
      } catch (err) { console.error("Erro logs:", err); }
      setLoading(false);
@@ -39,11 +38,11 @@ export default function StockHistoryModule({ produtos }) {
      if(finalStock < 0) return alert("Erro: O estoque não pode ficar negativo.");
 
      try {
-       // Atualiza via Actions (Túnel Pro)
-       await actions.updateProduct({ stock: finalStock }, selectedProduct.id);
+       // Atualiza Produto diretamente
+       await db.upsertProduct({ stock: finalStock }, selectedProduct.id);
 
-       // Grava Auditoria (Túnel Pro)
-       await actions.logInventoryChange({
+       // Grava Auditoria diretamente
+       await db.logInventoryChange({
           product_id: selectedProduct.id,
           change_type: adjustForm.change_type,
           quantity_changed: adjustForm.change_type === 'Entrada' ? qty : -qty,
@@ -54,7 +53,8 @@ export default function StockHistoryModule({ produtos }) {
        setIsAdjustModalOpen(false);
        setAdjustForm({ change_type: 'Entrada', quantity: '', reason: '' });
        setSelectedProduct(null); 
-       alert("Estoque calibrado com sucesso e log registrado!");
+       alert("Estoque calibrado com sucesso!");
+       if(onStockChange) onStockChange(); // Refresh local no Dashboard pai
      } catch (err) {
        alert("Falha operacional: " + err.message);
      }

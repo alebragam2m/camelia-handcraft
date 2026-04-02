@@ -3,28 +3,44 @@ import { Navigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
 function ProtectedRoute({ children }) {
-  // null = ainda verificando, true = autenticado, false = não autenticado
-  const [authState, setAuthState] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // onAuthStateChange com INITIAL_SESSION é o único evento confiável
-    // para detectar sessão restaurada do localStorage após um Refresh (F5)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION') {
-        // Sessão inicial verificada — pode ou não ter usuário
-        setAuthState(!!session);
-      } else if (event === 'SIGNED_IN') {
-        setAuthState(true);
-      } else if (event === 'SIGNED_OUT') {
-        setAuthState(false);
+    // Timeout de segurança: se o Supabase demorar mais de 5s, não trava a tela
+    const timeoutId = setTimeout(() => {
+      console.warn("Timeout na verificação de sessão — redirecionando para login.");
+      setLoading(false);
+    }, 5000);
+
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
+      } catch (err) {
+        console.error("Erro ao verificar sessão:", err);
+        setIsAuthenticated(false);
+      } finally {
+        clearTimeout(timeoutId);
+        setLoading(false);
       }
+    };
+
+    checkAuth();
+
+    // Listener para mudanças de login/logout no Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Aguarda a sessão ser verificada — sem timeout, sem redirecionamento precipitado
-  if (authState === null) {
+  if (loading) {
     return (
       <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F8FC', flexDirection: 'column', gap: '12px' }}>
         <div style={{ width: '32px', height: '32px', border: '3px solid #6667AB', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
@@ -34,7 +50,7 @@ function ProtectedRoute({ children }) {
     );
   }
 
-  if (!authState) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

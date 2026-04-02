@@ -7,42 +7,53 @@ import StockHistoryModule from '../components/StockHistoryModule';
 import SuppliersModule from '../components/SuppliersModule';
 import ProductsModule from '../components/ProductsModule';
 import UsersModule from '../components/UsersModule';
+import { db } from '../services/db';
 
 import { useData } from '../context/DataContext';
 
 function AdminDashboard() {
-  const { 
-    products: produtos, 
-    sales: vendas, 
-    clients: clientes, 
-    loading: contextLoading, 
-    isOnline, 
-    lastSync,
-    actions 
-  } = useData();
+  const { isOnline } = useData();
 
   const [activeTab, setActiveTab] = useState('visao_geral');
   const [userRole, setUserRole] = useState('Vendedor');
   const isAdmin = userRole === 'Admin';
-  const [showRetry, setShowRetry] = useState(false);
   
+  // --- ESTADOS DE DADOS (Restaurados para Local) ---
+  const [produtos, setProdutos] = useState([]);
+  const [vendas, setVendas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [lastSync, setLastSync] = useState(null);
+
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isClientDossierOpen, setIsClientDossierOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const navigate = useNavigate();
 
-  // Proteção contra travamento no Sincronismo
-  useEffect(() => {
-    let timer;
-    if (contextLoading && produtos.length === 0) {
-      timer = setTimeout(() => setShowRetry(true), 12000); // 12 segundos de tolerância
-    } else {
-      setShowRetry(false);
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const [p, s, c] = await Promise.all([
+        db.getProducts(),
+        db.getSales(),
+        db.getClients()
+      ]);
+      setProdutos(p);
+      setVendas(s);
+      setClientes(c);
+      setLastSync(new Date());
+    } catch (err) {
+      console.error("Erro ao carregar dados:", err);
+    } finally {
+      setLoading(false);
     }
-    return () => clearTimeout(timer);
-  }, [contextLoading, produtos.length]);
+  };
 
   const detectUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -112,7 +123,10 @@ function AdminDashboard() {
     }
   }, [clientes, produtos]);
 
-  useEffect(() => { detectUserRole(); }, []);
+  useEffect(() => { 
+    detectUserRole(); 
+    fetchData();
+  }, []);
 
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/login'); };
   const handleFileChange = (e) => { if (e.target.files) setSelectedFiles(Array.from(e.target.files).slice(0, 4)); };
@@ -121,9 +135,10 @@ function AdminDashboard() {
     e.preventDefault();
     setIsSavingClient(true);
     try {
-      await actions.addClient({ ...clientForm, whatsapp: clientForm.is_whatsapp ? clientForm.phone : clientForm.whatsapp });
+      await db.upsertClient({ ...clientForm, whatsapp: clientForm.is_whatsapp ? clientForm.phone : clientForm.whatsapp });
       setIsClientModalOpen(false);
       setClientForm(defaultClientForm);
+      fetchData();
     } catch (err) { alert("Erro ao registrar cliente: " + err.message); }
     setIsSavingClient(false);
   };
@@ -134,8 +149,9 @@ function AdminDashboard() {
     e.preventDefault();
     setIsSavingClient(true);
     try {
-      await actions.updateClient(selectedClient, selectedClient.id);
+      await db.upsertClient(selectedClient, selectedClient.id);
       setIsClientDossierOpen(false);
+      fetchData();
     } catch (err) { alert("Erro no update: " + err.message); }
     setIsSavingClient(false);
   };
@@ -155,10 +171,11 @@ function AdminDashboard() {
         const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
         photoUrls.push(publicUrl);
       }
-      await actions.addProduct({ ...formData, images: photoUrls, user_id: user.id });
+      await db.upsertProduct({ ...formData, images: photoUrls, user_id: user.id });
       setIsProductModalOpen(false);
       setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Avulso', stock: '', description: '' });
       setSelectedFiles([]);
+      fetchData();
     } catch (err) { alert("Erro ao criar produto: " + err.message); }
     setIsSavingProduct(false);
   };
@@ -195,7 +212,7 @@ function AdminDashboard() {
         cost_at_time: item.cost || 0
       }));
       const totalCost = cartItems.reduce((acc, item) => acc + (Number(item.cost || 0) * Number(item.quantity)), 0);
-      await actions.registerSale({
+      await db.createSale({
         client_id: saleForm.client_id,
         payment_method: saleForm.payment_method,
         total_amount: finalSaleTotal,
@@ -207,6 +224,7 @@ function AdminDashboard() {
       setIsSaleModalOpen(false);
       setCartItems([]);
       setSaleForm({ client_id: '', payment_method: 'Pix', shipping_cost: '', discount: '', status: 'Paga' });
+      fetchData();
     } catch (err) { alert("Falha na Venda: " + err.message); }
     setIsSavingSale(false);
   };
@@ -225,71 +243,103 @@ function AdminDashboard() {
   const qtdVendasDia = vendas.filter(v => v.created_at.startsWith(todayStr)).length;
   const qtdVendasMes = vMes.length;
 
-  if (contextLoading && produtos.length === 0) {
+  if (loading && produtos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-fundo gap-4">
-          <div className="w-12 h-12 border-4 border-secundaria/20 border-t-secundaria rounded-full animate-spin"></div>
-          <div className="text-center">
-            <p className="text-secundaria font-serif font-bold text-lg animate-pulse tracking-widest uppercase">Camélia: Sincronizando Core Pro...</p>
-            <p className="text-gray-400 text-[10px] uppercase font-bold tracking-[0.2em] mt-1">Sintonizando Túnel de Dados Supabase</p>
-          </div>
-          
-          {showRetry && (
-            <button 
-              onClick={() => { window.location.reload(); }} // Força reload total se travar
-              className="mt-6 bg-white border border-gray-200 px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:border-primaria hover:text-primaria transition-all animate-fade-in-up"
-            >
-              🔄 Recuperar Sincronismo
-            </button>
-          )}
+      <div className="flex flex-col items-center justify-center h-screen bg-[#F8F8FC] gap-4">
+          <div className="w-12 h-12 border-4 border-[#333333]/10 border-t-[#333333] rounded-full animate-spin"></div>
+          <p className="text-[#333333] font-serif font-bold text-lg animate-pulse tracking-widest uppercase">Carregando Camélia...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-fundo min-h-screen text-secundaria font-sans selection:bg-primaria selection:text-white">
+    <div className="bg-[#F8F8FC] min-h-screen text-[#333333] font-sans selection:bg-[#7262F1] selection:text-white">
       
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-[60] px-8 py-3 flex justify-between items-center shadow-sm backdrop-blur-md bg-white/90">
-         <div className="flex items-center gap-6">
-            <h1 className="text-2xl font-serif font-bold tracking-tighter cursor-pointer flex items-center gap-3" onClick={() => navigate('/')}>
-               <img src="/favicon.png" alt="Logo" className="w-8 h-8 object-contain" />
-               Camélia <span className="text-primaria">.</span>
-            </h1>
-            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-[100] px-6 py-4 flex justify-between items-center shadow-sm backdrop-blur-md bg-white/95">
+         <div className="flex items-center gap-4">
+            {/* Hamburger para Mobile */}
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+              className="md:hidden p-2 text-[#333333] hover:bg-gray-50 rounded-lg flex items-center justify-center transition-colors"
+            >
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+               </svg>
+            </button>
+             <div className="flex items-center gap-4 cursor-pointer group" onClick={() => navigate('/')}>
+                <div className="flex items-center gap-3">
+                   <img src="/logo camelia vetor (1).svg" alt="Camélia Handcraft" className="h-10 md:h-14 w-auto object-contain" />
+                </div>
+             </div>
+            <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full ml-2">
                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500 animate-pulse'}`}></div>
                <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-400">
-                  {isOnline ? 'Tempo Real Ativo' : 'Sincronizando...'}
+                  {isOnline ? 'CONEXÃO ESTÁVEL' : 'OFFLINE'}
                </span>
             </div>
          </div>
 
          <div className="flex items-center gap-4">
-            {lastSync && <span className="hidden lg:block text-[9px] text-gray-400 font-bold uppercase">Último Sync: {lastSync.toLocaleTimeString()}</span>}
-            <button onClick={handleLogout} className="text-[10px] font-bold uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors">Sair</button>
+            {lastSync && <span className="hidden lg:block text-[9px] text-gray-400 font-bold uppercase tracking-widest">Atualizado: {lastSync.toLocaleTimeString()}</span>}
+            <button onClick={handleLogout} className="px-4 py-2 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">Sair</button>
          </div>
       </header>
 
       <div className="flex">
-        <aside className="w-64 bg-white border-r border-gray-100 h-[calc(100vh-64px)] fixed hidden md:flex flex-col p-6 z-50">
-           <nav className="flex-1 space-y-2 pt-4">
-              <button onClick={() => setActiveTab('visao_geral')} className={`w-full text-left px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'visao_geral' ? 'bg-secundaria text-white shadow-lg translate-x-2' : 'text-gray-400 hover:bg-gray-50'}`}>🏛️ Resumo Executivo</button>
-              <button onClick={() => setActiveTab('estoque')} className={`w-full text-left px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'estoque' ? 'bg-secundaria text-white shadow-lg translate-x-2' : 'text-gray-400 hover:bg-gray-50'}`}>📦 Gestão de Estoque</button>
-              <button onClick={() => setActiveTab('vendas')} className={`w-full text-left px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'vendas' ? 'bg-secundaria text-white shadow-lg translate-x-2' : 'text-gray-400 hover:bg-gray-50'}`}>🛒 Livro de Vendas</button>
-              <button onClick={() => setActiveTab('clientes')} className={`w-full text-left px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'clientes' ? 'bg-secundaria text-white shadow-lg translate-x-2' : 'text-gray-400 hover:bg-gray-50'}`}>💎 Clientes VIP</button>
-              {isAdmin && <button onClick={() => setActiveTab('financeiro')} className={`w-full text-left px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'financeiro' ? 'bg-secundaria text-white shadow-lg translate-x-2' : 'text-gray-400 hover:bg-gray-50'}`}>🏦 Tesouraria</button>}
-              {isAdmin && <button onClick={() => setActiveTab('fornecedores')} className={`w-full text-left px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${activeTab === 'fornecedores' ? 'bg-secundaria text-white shadow-lg translate-x-2' : 'text-gray-400 hover:bg-gray-50'}`}>🧵 Suprimentos</button>}
+        {/* Sidebar Overlay Mobile */}
+        {isSidebarOpen && <div className="fixed inset-0 bg-secundaria/50 backdrop-blur-sm z-[70] md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
+
+        <aside className={`w-72 bg-[#2D2B52] h-[calc(100vh-64px)] fixed flex flex-col p-6 z-[80] transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 shadow-2xl`}>
+           <div className="mb-10 px-2">
+              <img src="/logo camelia vetor (1).svg" alt="Camélia Handcraft" className="h-12 w-auto brightness-0 invert" />
+           </div>
+
+           <nav className="space-y-1 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <button onClick={() => { setActiveTab('visao_geral'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'visao_geral' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">📊</span> Visão Geral
+              </button>
+              <button onClick={() => { setActiveTab('produtos'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'produtos' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">📦</span> Produtos
+              </button>
+              <button onClick={() => { setActiveTab('estoque'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'estoque' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">📦</span> Estoque (PCP)
+              </button>
+              <button onClick={() => { setActiveTab('clientes'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'clientes' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">🤝</span> CRM Completo
+              </button>
+              <button onClick={() => { setActiveTab('vendas'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'vendas' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">💰</span> Central de Vendas
+              </button>
+              {isAdmin && <button onClick={() => { setActiveTab('financeiro'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'financeiro' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">🏦</span> Financeiro (DRE)
+              </button>}
+              {isAdmin && <button onClick={() => { setActiveTab('fornecedores'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'fornecedores' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">🧵</span> Fornecedores
+              </button>}
+              {isAdmin && <button onClick={() => { setActiveTab('usuarios'); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] transition-all flex items-center gap-3 ${activeTab === 'usuarios' ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+                 <span className="text-sm">👥</span> Usuários
+              </button>}
+              <button onClick={() => navigate('/')} className="w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-[0.1em] text-gray-400 hover:bg-white/5 hover:text-white transition-all flex items-center gap-3">
+                 <span className="text-sm">🌐</span> Ver Site Público
+              </button>
            </nav>
+           
+           <div className="mt-auto pt-6">
+              <button onClick={handleLogout} className="w-full bg-[#4A324A] text-white font-bold py-4 rounded-xl text-[10px] uppercase tracking-widest hover:bg-[#5C3F5C] transition-colors shadow-lg">
+                 Sair do Painel
+              </button>
+           </div>
         </aside>
 
         <main className="flex-1 ml-0 md:ml-64 p-10 bg-[#F0F2F9] pb-32 min-h-[calc(100vh-64px)]">
           <header className="mb-10 flex justify-between items-center border-b border-gray-200 pb-6 relative">
             <h2 className="text-3xl font-serif font-bold text-secundaria">
-              {activeTab === 'visao_geral' && 'Dashboard Financeiro'}
-              {activeTab === 'estoque' && 'Controle de Estoque'}
-              {activeTab === 'clientes' && 'Gestão de Clientes VIPs'}
-              {activeTab === 'vendas' && 'Livro de Registros'}
-              {activeTab === 'financeiro' && 'Tesouraria'}
-              {activeTab === 'fornecedores' && 'Cadeia de Suprimentos'}
+               {activeTab === 'visao_geral' && 'Resumo Financeiro'}
+               {activeTab === 'estoque' && 'Controle de Estoque'}
+               {activeTab === 'clientes' && 'Gestão de Clientes VIPs'}
+               {activeTab === 'vendas' && 'Livro de Registros'}
+               {activeTab === 'financeiro' && 'Tesouraria'}
+               {activeTab === 'fornecedores' && 'Cadeia de Suprimentos'}
             </h2>
             
             <div className="flex gap-4 items-center">
@@ -326,69 +376,72 @@ function AdminDashboard() {
           <div className="space-y-6">
             {activeTab === 'visao_geral' && (
               <div className="space-y-6 animate-fade-in-down">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                   <div className="bg-white p-6 rounded-3xl shadow-sm border-t-[6px] border-emerald-500">
-                      <h3 className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1 flex justify-between">Faturamento (Hoje) <span>📅</span></h3>
-                      <p className="text-3xl font-serif text-secundaria font-bold">{formatCurrency(fatDia)}</p>
-                      <p className="text-xs text-gray-400 mt-2 font-bold"><span className="text-emerald-500">{qtdVendasDia}</span> pedidos hoje.</p>
-                   </div>
-                   <div className="bg-white p-6 rounded-3xl shadow-sm border-t-[6px] border-primaria">
-                      <h3 className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1 flex justify-between">Faturamento (Mês) <span>📈</span></h3>
-                      <p className="text-3xl font-serif text-secundaria font-bold">{formatCurrency(fatMes)}</p>
-                      <p className="text-xs text-gray-400 mt-2 font-bold"><span className="text-primaria">{qtdVendasMes}</span> pedidos este mês.</p>
-                   </div>
-                   <div className="bg-gray-900 text-white p-6 rounded-3xl shadow-xl">
-                      <h3 className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1 flex justify-between">Lucro Líquido (Mês) <span>💎</span></h3>
-                      <p className="text-3xl font-serif text-emerald-400 font-bold">{formatCurrency(lucroMes)}</p>
-                      <p className="text-[10px] text-gray-400 mt-1 uppercase font-medium">Após deduções de fabricação</p>
-                   </div>
-                   <div className="bg-white p-6 rounded-3xl shadow-sm border-t-[6px] border-amber-400">
-                      <h3 className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1 flex justify-between">Base CRM <span>🤝</span></h3>
-                      <p className="text-3xl font-serif text-secundaria font-bold">{clientes.length}</p>
-                      <p className="text-xs text-gray-400 mt-2 font-bold">Clientes fidelizados.</p>
-                   </div>
-                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-emerald-500/20 border-l-[6px] border-l-emerald-500">
+                       <h3 className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-1 flex justify-between">Faturamento (Hoje) <span className="opacity-50">📊</span></h3>
+                       <p className="text-3xl font-serif text-secundaria font-bold tracking-tighter">{formatCurrency(fatDia)}</p>
+                       <p className="text-[10px] text-gray-400 mt-2 font-bold"><span className="text-emerald-500">{qtdVendasDia}</span> pedidos processados hoje.</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-indigo-500/20 border-l-[6px] border-l-indigo-500">
+                       <h3 className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-1 flex justify-between">Faturamento (Mês) <span className="opacity-50">📈</span></h3>
+                       <p className="text-3xl font-serif text-secundaria font-bold tracking-tighter">{formatCurrency(fatMes)}</p>
+                       <p className="text-[10px] text-gray-400 mt-2 font-bold"><span className="text-indigo-500">{qtdVendasMes}</span> pedidos neste mês.</p>
+                    </div>
+                    <div className="bg-[#131722] p-6 rounded-3xl shadow-xl border-l-[6px] border-l-indigo-400">
+                       <h3 className="text-gray-500 text-[9px] font-bold uppercase tracking-widest mb-1 flex justify-between">Lucro Estimado (Mês) <span className="opacity-50 text-indigo-400">💎</span></h3>
+                       <p className="text-3xl font-serif text-[#34D399] font-bold tracking-tighter">{formatCurrency(lucroMes)}</p>
+                       <p className="text-[9px] text-gray-500 mt-1 font-medium italic">Receita menos custos de fabricação.</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-yellow-500/20 border-l-[6px] border-l-yellow-500">
+                       <h3 className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-1 flex justify-between">Base CRM <span className="opacity-50">🤝</span></h3>
+                       <p className="text-3xl font-sans text-secundaria font-bold tracking-tighter">{clientes.length}</p>
+                       <p className="text-[10px] text-gray-400 mt-2 font-bold">Clientes VIPs e Padrão.</p>
+                    </div>
+                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                      <h3 className="text-secundaria text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><span>💳</span> Balancete de Entradas (Mês)</h3>
-                      <div className="space-y-4">
-                         <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                            <div><p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Volume Pix</p><p className="text-xl font-bold text-secundaria">{formatCurrency(totPix)}</p></div>
-                            <span className="bg-emerald-100 text-emerald-700 font-bold text-[10px] uppercase px-3 py-1 rounded-lg">Dinheiro em Caixa</span>
-                         </div>
-                         <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
-                            <div><p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Volume Cartões</p><p className="text-xl font-bold text-secundaria">{formatCurrency(totCartao)}</p></div>
-                            <span className="bg-blue-100 text-blue-700 font-bold text-[10px] uppercase px-3 py-1 rounded-lg">Cartão de Crédito/Débito</span>
-                         </div>
-                      </div>
-                   </div>
-                   <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                      <h3 className="text-red-900 text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><span>🔥</span> Perdas e Concessões (Mês)</h3>
-                      <div className="space-y-4">
-                         <div className="flex justify-between items-center bg-red-50 p-4 rounded-xl border border-red-100">
-                            <div><p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Descontos Concedidos</p><p className="text-xl font-bold text-red-700">{formatCurrency(descontosMes)}</p></div>
-                            <span className="text-[20px]">🎁</span>
-                         </div>
-                         <div className="flex justify-between items-center bg-orange-50 p-4 rounded-xl border border-orange-100">
-                            <div><p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Taxas Bancárias Estimadas</p><p className="text-xl font-bold text-orange-700">{formatCurrency(totCartao * 0.0499)}</p></div>
-                            <span className="text-[20px]">🏦</span>
-                         </div>
-                      </div>
-                   </div>
-                </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                       <h3 className="text-secundaria text-[11px] font-serif font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><span>💳</span> Balancete de Entradas (Mês)</h3>
+                       <div className="space-y-4">
+                          <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                             <div><p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Volume Pix</p><p className="text-xl font-bold text-secundaria">{formatCurrency(totPix)}</p></div>
+                             <span className="bg-emerald-100 text-emerald-700 font-bold text-[8px] tracking-widest uppercase px-3 py-1 rounded-lg">Dinheiro na Hora</span>
+                          </div>
+                          <div className="flex justify-between items-center bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                             <div><p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Volume Cartões</p><p className="text-xl font-bold text-secundaria">{formatCurrency(totCartao)}</p></div>
+                             <span className="bg-blue-100 text-blue-700 font-bold text-[8px] tracking-widest uppercase px-3 py-1 rounded-lg">Crédito / Débito</span>
+                          </div>
+                       </div>
+                    </div>
+                    <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                       <h3 className="text-secundaria text-[11px] font-serif font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><span>🔥</span> Perdas e Concessões (Mês)</h3>
+                       <div className="space-y-4">
+                          <div className="flex justify-between items-center bg-red-50/30 p-4 rounded-xl border border-red-50">
+                             <div><p className="text-[9px] font-bold text-red-800 uppercase tracking-widest">Descontos Concedidos</p><p className="text-xl font-bold text-red-700">{formatCurrency(descontosMes)}</p></div>
+                             <span className="text-[20px]">🎁</span>
+                          </div>
+                          <div className="flex justify-between items-center bg-orange-50/30 p-4 rounded-xl border border-orange-100">
+                             <div><p className="text-[9px] font-bold text-orange-800 uppercase tracking-widest">Taxas Estimadas (Cartões)</p><p className="text-xl font-bold text-orange-700">{formatCurrency(totCartao * 0.0499)}</p></div>
+                             <span className="text-[20px]">🏦</span>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
 
-                <div className="bg-secundaria text-white p-8 rounded-3xl shadow-xl flex justify-between items-center relative overflow-hidden">
-                   <div className="relative z-10 w-full flex flex-col md:flex-row justify-between items-center gap-6">
-                      <div>
-                         <h3 className="text-primaria text-[10px] font-bold uppercase tracking-widest mb-1">Receita Histórica Acumulada</h3>
-                         <p className="text-4xl font-serif font-bold">{formatCurrency(receitaTotal)}</p>
-                      </div>
-                      <div className="text-center md:text-right">
-                         <p className="text-xs text-gray-300 font-bold">Desde o início da operação na Camélia</p>
-                      </div>
-                   </div>
-                </div>
+                 <div className="bg-secundaria text-white p-8 rounded-3xl shadow-xl flex justify-between items-center relative overflow-hidden">
+                    <div className="relative z-10 w-full flex flex-col md:flex-row justify-between items-center gap-6">
+                       <header className="flex justify-between items-center mb-10">
+             <div>
+                <h1 className="text-4xl font-serif font-bold text-secundaria tracking-tight">Resumo Financeiro</h1>
+                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-1">Status Operacional em Tempo Real</p>
+             </div>
+             <p className="text-4xl font-serif font-bold">{formatCurrency(receitaTotal)}</p>
+                       </header>
+                       <div className="text-center md:text-right">
+                          <p className="text-xs text-gray-300 font-bold">Desde o início da operação na Camélia</p>
+                       </div>
+                    </div>
+                 </div>
               </div>
             )}
 

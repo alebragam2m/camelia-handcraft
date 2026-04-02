@@ -43,7 +43,7 @@ function Navbar() {
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" onClick={() => setIsMenuOpen(false)}>
               <img 
-                src="/logo%20camelia.png" 
+                src="/logo camelia vetor (1).svg" 
                 onError={(e) => { e.target.src = '/logo.png' }}
                 alt="Camélia Handcraft" 
                 className="h-12 md:h-16 w-auto transition-all" 

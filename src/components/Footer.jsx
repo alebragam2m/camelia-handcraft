@@ -9,9 +9,9 @@ function Footer() {
           
           <div className="col-span-1 md:col-span-2 pr-8 flex flex-col items-start">
             <img 
-               src="/logo-branca.png" 
+               src="/logo camelia vetor (1).svg" 
                alt="Camélia Handcraft" 
-               className="h-32 w-auto mb-4 opacity-100 drop-shadow-lg" 
+               className="h-28 w-auto mb-4 brightness-0 invert opacity-100 drop-shadow-lg" 
             />
             <p className="text-gray-300 max-w-sm text-sm leading-loose">
               Mesa posta com afeto. Transforme sua casa com peças artesanais exclusivas feitas sob medida para você e suas visitas.

@@ -4,25 +4,15 @@ import { supabase } from '../supabase';
  * Utilitário de Repetição (Retry Logic) Profissional
  * Tenta uma operação até 'maxRetries' vezes com atraso exponencial.
  */
-async function retry(fn, maxRetries = 3, delay = 800) {
+async function retry(fn, maxRetries = 3, delay = 1000) {
   let lastError;
-  
-  // Verificação de Sessão Pronta (Evita retries inúteis se o auth do Supabase ainda não carregou)
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    console.warn("Retrying blocked: No active Supabase session found.");
-    // Tentamos apenas uma vez se não houver sessão, para não travar o app em loop
-    return await fn();
-  }
-
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fn();
     } catch (err) {
       lastError = err;
-      // Se for erro de rede ou timeout (abort), tentamos novamente
       if (i < maxRetries - 1) {
-        console.warn(`Tentativa ${i + 1} de ${maxRetries} falhou. Recalibrando em ${delay}ms...`, err);
+        console.warn(`Tentativa ${i + 1} falhou. Tentando novamente em ${delay}ms...`, err);
         await new Promise(resolve => setTimeout(resolve, delay));
         delay *= 2; // Backoff exponencial
       }
