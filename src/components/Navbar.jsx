@@ -46,7 +46,7 @@ function Navbar() {
                 src="/logo camelia vetor (1).svg" 
                 onError={(e) => { e.target.src = '/logo.png' }}
                 alt="Camélia Handcraft" 
-                className="h-[68px] md:h-[90px] w-auto transition-all" 
+                className="h-[78px] md:h-[104px] w-auto transition-all" 
               />
             </Link>
           </div>

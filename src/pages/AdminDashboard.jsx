@@ -268,7 +268,7 @@ function AdminDashboard() {
             </button>
              <div className="flex items-center gap-4 cursor-pointer group" onClick={() => navigate('/')}>
                 <div className="flex items-center gap-3">
-                   <img src="/logo camelia vetor (1).svg" alt="Camélia Handcraft" className="h-14 md:h-20 w-auto object-contain" />
+                   <img src="/logo camelia vetor (1).svg" alt="Camélia Handcraft" className="h-16 md:h-24 w-auto object-contain" />
                 </div>
              </div>
             <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-100 rounded-full ml-2">
@@ -291,7 +291,7 @@ function AdminDashboard() {
 
         <aside className={`w-72 bg-[#2D2B52] h-[calc(100vh-64px)] fixed flex flex-col p-6 z-[80] transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 shadow-2xl`}>
            <div className="mb-10 px-2">
-              <img src="/logo camelia vetor (1).svg" alt="Camélia Handcraft" className="h-[68px] w-auto brightness-0 invert" />
+              <img src="/logo camelia vetor (1).svg" alt="Camélia Handcraft" className="h-[78px] w-auto brightness-0 invert" />
            </div>
 
            <nav className="space-y-1 flex-1 overflow-y-auto pr-2 custom-scrollbar">
