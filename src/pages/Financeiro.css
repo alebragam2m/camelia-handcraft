@@ -1,0 +1,30 @@
+/* Padronização de Layout */
+.pagina-container { padding: 10px; animation: fadeIn 0.5s ease; }
+
+.topo-resumo { 
+  display: grid; 
+  grid-template-columns: repeat(4, 1fr); 
+  gap: 15px; 
+  margin-bottom: 20px; 
+}
+
+.mini-card {
+  background: white; padding: 15px; border-radius: 20px;
+  border: 1px solid #f5e6ba; text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+}
+
+.mini-card span { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+.mini-card h3 { margin: 5px 0; color: #1a1a1a; font-family: 'Inter', sans-serif; }
+
+.quadro-branco {
+  background: white; padding: 25px; border-radius: 25px;
+  border: 1px solid #f5e6ba; box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+  margin-bottom: 20px;
+}
+
+.tabela-padrao { width: 100%; border-collapse: collapse; }
+.tabela-padrao th { text-align: left; padding: 12px; color: #d4af37; border-bottom: 2px solid #fdfaf3; font-size: 13px; }
+.tabela-padrao td { padding: 12px; border-bottom: 1px solid #f9f6f0; font-size: 14px; }
+
+.linha-clicavel:hover { background: #fdfaf3; cursor: pointer; }

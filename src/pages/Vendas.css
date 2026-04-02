@@ -1,0 +1,21 @@
+.vendas-container { padding: 10px; animation: fadeIn 0.5s ease; }
+.vendas-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+
+.vendas-card {
+  background: white; padding: 20px; border-radius: 25px;
+  border: 1px solid #f5e6ba; box-shadow: 0 5px 15px rgba(0,0,0,0.02);
+}
+
+.lista-produtos-venda {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 15px; margin-top: 15px; max-height: 400px; overflow-y: auto;
+}
+
+.item-catalogo {
+  padding: 10px; border: 1px solid #f9f6f0; border-radius: 15px;
+  text-align: center; cursor: pointer; transition: 0.2s;
+}
+.item-catalogo:hover { border-color: #d4af37; background: #fffcf5; }
+
+.checkout-box { background: #1a1a1a; color: white; padding: 20px; border-radius: 25px; }
+.checkout-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; font-size: 13px; }

@@ -1,0 +1,53 @@
+.dashboard-container {
+  padding: 5px 10px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* KPIs mais elegantes e baixos */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.kpi-card {
+  background: white;
+  padding: 15px;
+  border-radius: 20px;
+  border: 1px solid #f5e6ba;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  text-align: center;
+}
+
+.kpi-card span { font-size: 10px; color: #a0a0a0; letter-spacing: 1px; font-weight: 600; }
+.kpi-card h2 { font-size: 22px; color: #1a1a1a; margin-top: 5px; font-family: 'Playfair Display', serif; }
+
+/* Grid de Gráficos - Vertical mas otimizado */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.chart-card {
+  background: white;
+  padding: 20px;
+  border-radius: 25px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+}
+
+.chart-card h3 {
+  font-family: 'Playfair Display', serif;
+  color: #d4af37;
+  margin-bottom: 15px;
+  font-size: 16px;
+  border-bottom: 1px solid #f9f6f0;
+  padding-bottom: 8px;
+}
+
+/* Barras mais finas e labels menores */
+.bar-row { margin-bottom: 12px; }
+.bar-label { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12.5px; color: #444; }
+.bar-track { background: #fdfaf3; height: 9px; border-radius: 50px; overflow: hidden; }
+.bar-progress { height: 100%; border-radius: 50px; }

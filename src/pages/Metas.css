@@ -1,0 +1,77 @@
+.metas-container {
+  padding: 5px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.metas-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.meta-card {
+  background: white;
+  padding: 25px;
+  border-radius: 30px;
+  border: 1px solid #f5e6ba;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+}
+
+.meta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.meta-header h3 {
+  font-family: 'Playfair Display', serif;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.meta-badge {
+  background: #fffcf5;
+  color: #d4af37;
+  padding: 5px 15px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid #d4af37;
+}
+
+/* Visual da Barra de Meta */
+.meta-progress-wrapper {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.meta-value-display {
+  font-size: 32px;
+  font-weight: bold;
+  color: #d4af37;
+  margin-bottom: 10px;
+}
+
+.meta-bar-bg {
+  background: #f9f6f0;
+  height: 20px;
+  border-radius: 50px;
+  overflow: hidden;
+  position: relative;
+}
+
+.meta-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d4af37, #e6c667);
+  border-radius: 50px;
+  transition: width 1.5s cubic-bezier(0.1, 0.5, 0.5, 1);
+}
+
+.meta-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+  font-size: 13px;
+  color: #888;
+}
