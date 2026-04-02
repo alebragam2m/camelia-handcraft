@@ -147,7 +147,7 @@ function AdminDashboard() {
     e.preventDefault();
     setIsSavingProduct(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // A variável "user" não é necessária para o cadastro de produtos na estrutura atual
       const photoUrls = [];
       for (const file of selectedFiles) {
         const fileExt = file.name.split('.').pop();
@@ -159,8 +159,11 @@ function AdminDashboard() {
         photoUrls.push(publicUrl);
       }
       
-      // MOTOR PRO V2: Cadastro Reativo no Catálogo
-      await actions.upsertProduct({ ...formData, images: photoUrls, user_id: user.id });
+      // MOTOR PRO V2: Cadastro Reativo no Catálogo (Removido user_id inconsistente)
+      await actions.upsertProduct({ 
+        ...formData, 
+        image_url: photoUrls.length > 0 ? photoUrls[0] : null 
+      });
       
       setIsProductModalOpen(false);
       setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Flores', stock: '', description: '' });
