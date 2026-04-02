@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useData } from '../context/DataContext';
 import { db } from '../services/db';
 
 export default function SuppliersModule() {

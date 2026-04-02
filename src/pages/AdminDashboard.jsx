@@ -84,7 +84,7 @@ function AdminDashboard() {
     const currentM = today.getMonth() + 1;
     const currentD = today.getDate();
     const bd = clientsArray.filter(c => {
-       if(!c.birth_date) return false;
+       if(!c.birth_date || typeof c.birth_date !== 'string') return false;
        const p = c.birth_date.split('-');
        const m = parseInt(p[1]);
        const d = parseInt(p[2]);
@@ -214,15 +214,19 @@ function AdminDashboard() {
   const todayStr = new Date().toISOString().split('T')[0];
   const currM = new Date().getMonth();
   const currY = new Date().getFullYear();
-  const vMes = vendas.filter(v => { const d = new Date(v.created_at); return d.getMonth() === currM && d.getFullYear() === currY; });
-  const fatDia = vendas.filter(v => v.created_at.startsWith(todayStr)).reduce((acc, v) => acc + Number(v.total_amount), 0);
+  const vMes = vendas.filter(v => { 
+     if(!v.created_at) return false;
+     const d = new Date(v.created_at); 
+     return d.getMonth() === currM && d.getFullYear() === currY; 
+  });
+  const fatDia = vendas.filter(v => v.created_at?.startsWith(todayStr)).reduce((acc, v) => acc + Number(v.total_amount), 0);
   const fatMes = vMes.reduce((acc, v) => acc + Number(v.total_amount), 0);
   const lucroMes = vMes.reduce((acc, v) => acc + (Number(v.total_amount) - Number(v.total_cost || 0)), 0);
   const totCartao = vMes.filter(v => v.payment_method?.includes('Cartão')).reduce((acc, v) => acc + Number(v.total_amount), 0);
   const totPix = vMes.filter(v => v.payment_method?.includes('Pix')).reduce((acc, v) => acc + Number(v.total_amount), 0);
   const descontosMes = vMes.reduce((acc, k) => acc + Number(k.discount || 0), 0);
   const receitaTotal = vendas.reduce((acc, v) => acc + Number(v.total_amount), 0);
-  const qtdVendasDia = vendas.filter(v => v.created_at.startsWith(todayStr)).length;
+  const qtdVendasDia = vendas.filter(v => v.created_at?.startsWith(todayStr)).length;
   const qtdVendasMes = vMes.length;
 
   if (loading && (!produtos || produtos.length === 0)) {

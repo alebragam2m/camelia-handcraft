@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useCameliaData, notifyDbUpdate } from '../hooks/useCameliaData';
 import { supabase } from '../supabase';
+import { db } from '../services/db';
 
 const DataContext = createContext();
 
