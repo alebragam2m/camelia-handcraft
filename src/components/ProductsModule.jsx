@@ -1,4 +1,7 @@
+import React, { useState, useRef } from 'react';
 import { useData } from '../context/DataContext';
+import { supabase } from '../supabase';
+import { formatCurrency } from '../utils/formatCurrency';
 
 // --- Categorias de produtos da Camélia ---
 const PRODUCT_CATEGORIES = ['Porta Guardanapos', 'Guardanapos', 'Jogos Americanos', 'Diversos', 'Insumos'];
@@ -105,9 +108,9 @@ export default function ProductsModule() {
 
       let res;
       if (editProduct) {
-        res = await actions.updateProduct(payload, editProduct.id);
+        res = await actions.upsertProduct(payload, editProduct.id);
       } else {
-        res = await actions.addProduct(payload);
+        res = await actions.upsertProduct(payload);
       }
 
       const targetId = editProduct ? editProduct.id : res.id;
@@ -115,7 +118,7 @@ export default function ProductsModule() {
       if (selectedFiles.length > 0) {
         const urls = await uploadImages(targetId);
         if (urls.length > 0) {
-          await actions.updateProduct({ image_url: urls[0] }, targetId);
+          await actions.upsertProduct({ image_url: urls[0] }, targetId);
         }
       }
 

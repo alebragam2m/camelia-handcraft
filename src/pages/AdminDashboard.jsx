@@ -18,6 +18,8 @@ function AdminDashboard() {
     sales: vendas, 
     clients: clientes, 
     loading, 
+    isError,
+    error,
     actions 
   } = useData();
 
@@ -233,7 +235,10 @@ function AdminDashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-[#F8F8FC] gap-4">
           <div className="w-12 h-12 border-4 border-[#333333]/10 border-t-[#333333] rounded-full animate-spin"></div>
-          <p className="text-[#333333] font-serif font-bold text-lg animate-pulse tracking-widest uppercase">Carregando Camélia...</p>
+          <div className="text-center">
+            <p className="text-[#333333] font-serif font-bold text-lg animate-pulse tracking-widest uppercase">Carregando Camélia...</p>
+            <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">Estabilizando Motor Pro v2</p>
+          </div>
       </div>
     );
   }
@@ -319,14 +324,27 @@ function AdminDashboard() {
 
         <main className="flex-1 ml-0 md:ml-64 p-10 bg-[#F0F2F9] pb-32 min-h-[calc(100vh-64px)]">
           <header className="mb-10 flex justify-between items-center border-b border-gray-200 pb-6 relative">
-            <h2 className="text-3xl font-serif font-bold text-secundaria">
-               {activeTab === 'visao_geral' && 'Resumo Financeiro'}
-               {activeTab === 'estoque' && 'Controle de Estoque'}
-               {activeTab === 'clientes' && 'Gestão de Clientes VIPs'}
-               {activeTab === 'vendas' && 'Livro de Registros'}
-               {activeTab === 'financeiro' && 'Tesouraria'}
-               {activeTab === 'fornecedores' && 'Cadeia de Suprimentos'}
-            </h2>
+            <div className="flex flex-col">
+              <h2 className="text-3xl font-serif font-bold text-secundaria">
+                 {activeTab === 'visao_geral' && 'Resumo Financeiro'}
+                 {activeTab === 'produtos' && 'Catálogo de Peças'}
+                 {activeTab === 'estoque' && 'Controle de Estoque'}
+                 {activeTab === 'clientes' && 'Gestão de Clientes VIPs'}
+                 {activeTab === 'vendas' && 'Livro de Registros'}
+                 {activeTab === 'financeiro' && 'Tesouraria'}
+                 {activeTab === 'fornecedores' && 'Cadeia de Suprimentos'}
+                 {activeTab === 'usuarios' && 'Gestão de Usuários'}
+              </h2>
+              {isError && (
+                <div className="mt-2 bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 flex items-center gap-3 animate-pulse">
+                   <span className="text-xl">⚠️</span>
+                   <div className="flex flex-col">
+                      <p className="text-[10px] font-bold uppercase tracking-widest">Erro Crítico de Sincronização SWR (Motor Pro v2)</p>
+                      <p className="text-[9px] font-bold opacity-80">Mensagem: {error?.message || 'Falha Desconhecida no Supabase'}</p>
+                   </div>
+                </div>
+              )}
+            </div>
             
             <div className="flex gap-4 items-center">
               <div className="relative">
@@ -355,7 +373,7 @@ function AdminDashboard() {
 
               {activeTab === 'clientes' && <button onClick={() => { setClientForm(defaultClientForm); setIsClientModalOpen(true); }} className="bg-secundaria text-white px-6 py-4 rounded-xl shadow-lg hover:-translate-y-1 font-bold text-sm uppercase tracking-widest">+ Novo Cliente</button>}
               {activeTab === 'vendas' && <button onClick={() => setIsSaleModalOpen(true)} className="bg-emerald-600 text-white px-6 py-4 rounded-xl shadow-lg hover:-translate-y-1 font-bold text-sm uppercase">🛒 Nova Venda</button>}
-              {activeTab === 'estoque' && <button onClick={() => setIsProductModalOpen(true)} className="bg-primaria text-white px-6 py-4 rounded-xl shadow-lg hover:-translate-y-1 font-bold text-sm uppercase">📦 Novo Produto</button>}
+              {(activeTab === 'estoque' || activeTab === 'produtos') && <button onClick={() => setIsProductModalOpen(true)} className="bg-primaria text-white px-6 py-4 rounded-xl shadow-lg hover:-translate-y-1 font-bold text-sm uppercase">📦 Novo Produto</button>}
             </div>
           </header>
 
@@ -468,6 +486,7 @@ function AdminDashboard() {
               </div>
             )}
 
+            {activeTab === 'produtos' && <ProductsModule />}
             {activeTab === 'estoque' && <StockHistoryModule produtos={produtos} onStockChange={actions.refresh} />}
             {activeTab === 'financeiro' && <FinanceModule />}
             {activeTab === 'fornecedores' && <SuppliersModule />}

@@ -185,8 +185,10 @@ export function DataProvider({ children }) {
     clients: clientsResult.data || [],
     suppliers: suppliersResult.data || [],
     transactions: transactionsResult.data || [],
-    loading: productsResult.isLoading || salesResult.isLoading,
+    // O loading só é true se as fontes principais ainda estiverem buscando e não houveram erros fatais
+    loading: (productsResult.isLoading || salesResult.isLoading) && !productsResult.isError && !salesResult.isError,
     isError: productsResult.isError || salesResult.isError,
+    error: productsResult.isError || salesResult.isError || null,
     actions
   };
 
