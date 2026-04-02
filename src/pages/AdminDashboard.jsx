@@ -72,7 +72,15 @@ function AdminDashboard() {
     }
   };
 
-  const [formData, setFormData] = useState({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Avulso', stock: '', description: '' });
+  const [formData, setFormData] = useState({ 
+    nome: '', 
+    price: '', 
+    cost: '', 
+    category: 'Porta Guardanapos', 
+    colecao: 'Flores', 
+    stock: '', 
+    description: '' 
+  });
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [isSavingSale, setIsSavingSale] = useState(false);
@@ -155,7 +163,7 @@ function AdminDashboard() {
       await actions.upsertProduct({ ...formData, images: photoUrls, user_id: user.id });
       
       setIsProductModalOpen(false);
-      setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Avulso', stock: '', description: '' });
+      setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Flores', stock: '', description: '' });
       setSelectedFiles([]);
     } catch (err) { alert("Erro ao criar produto: " + err.message); }
     setIsSavingProduct(false);
@@ -600,9 +608,13 @@ function AdminDashboard() {
       )}
 
       {isProductModalOpen && (
-        <div className="fixed inset-0 bg-secundaria/60 backdrop-blur z-[100] flex items-center justify-center p-4">
-           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-y-auto p-10">
-               <h3 className="text-2xl font-serif font-bold mb-6">Cadastrar Peça</h3>
+         <div className="fixed inset-0 bg-secundaria/60 backdrop-blur z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-y-auto p-10 relative">
+                <button onClick={() => setIsProductModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-colors mb-4">
+                   Fechar [X]
+                </button>
+
+                <h3 className="text-2xl font-serif font-bold mb-6">Cadastrar Peça</h3>
                <form onSubmit={handleCreateProduct} className="space-y-4">
                   <input type="file" multiple onChange={handleFileChange} className="w-full border-dashed border-2 p-6 rounded-xl text-center cursor-pointer" />
                   <div className="grid grid-cols-2 gap-4">
@@ -610,6 +622,20 @@ function AdminDashboard() {
                      <input type="number" placeholder="Preço" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
                      <input type="number" placeholder="Estoque Inicial" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
                      <input type="number" placeholder="Custo Un." value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
+                   
+                   <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Linha / Coleção</label>
+                      <select value={formData.colecao} onChange={e => setFormData({...formData, colecao: e.target.value})} className="px-4 py-3 border rounded-xl font-bold bg-white text-secundaria">
+                         <option value="Flores">Flores</option>
+                         <option value="Frutas e legumes">Frutas e Legumes</option>
+                         <option value="Provence">Provence</option>
+                         <option value="Páscoa">Páscoa</option>
+                         <option value="Círio">Círio</option>
+                         <option value="Natal">Natal</option>
+                         <option value="Verão">Verão</option>
+                         <option value="Diversos">Diversos</option>
+                      </select>
+                   </div>
                   </div>
                   <button type="submit" disabled={isSavingProduct} className="w-full bg-primaria text-white py-5 rounded-xl font-bold uppercase tracking-widest">
                      {isSavingProduct ? "Sincronizando..." : "Gravar no Catálogo Pro"}
