@@ -266,7 +266,7 @@ function AdminDashboard() {
          </div>
 
          <div className="flex items-center gap-4">
-            {lastSync && <span className="hidden lg:block text-[9px] text-gray-400 font-bold uppercase tracking-widest">Atualizado: {lastSync.toLocaleTimeString()}</span>}
+            <span className="hidden lg:block text-[9px] text-gray-400 font-bold uppercase tracking-widest text-emerald-500">Sincronização Ativa</span>
             <button onClick={handleLogout} className="px-4 py-2 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">Sair</button>
          </div>
       </header>
