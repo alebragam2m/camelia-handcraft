@@ -33,7 +33,7 @@ function Collections() {
       <section className="py-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
           {collections.map((col, i) => (
-            <Link to="/produtos" key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-md cursor-pointer transform transition duration-500 hover:-translate-y-2">
+            <Link to={`/produtos?col=${encodeURIComponent(col.nome)}`} key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-md cursor-pointer transform transition duration-500 hover:-translate-y-2">
               <img src={col.img} alt={col.nome} className="w-full h-full object-cover transition duration-700 group-hover:scale-110" />
               <div className="absolute inset-0 bg-secundaria/50 group-hover:bg-secundaria/30 transition duration-500"></div>
               <div className="absolute inset-0 flex flex-col items-center justify-center p-4">

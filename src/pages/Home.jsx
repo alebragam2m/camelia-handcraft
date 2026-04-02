@@ -42,13 +42,13 @@ function Home() {
             { nome: 'Provence', img: 'https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=500&q=80' },
             { nome: 'Diversos', img: 'https://images.unsplash.com/photo-1512341689857-198e7e2f3ca8?auto=format&fit=crop&w=500&q=80' },
           ].map((col, i) => (
-            <div key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition duration-500 hover:-translate-y-2">
+            <Link to={`/produtos?col=${encodeURIComponent(col.nome)}`} key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition duration-500 hover:-translate-y-2">
               <img src={col.img} alt={col.nome} className="w-full h-full object-cover transition duration-700 group-hover:scale-110" />
               <div className="absolute inset-0 bg-secundaria/50 group-hover:bg-secundaria/30 transition duration-500"></div>
               <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
                 <h3 className="text-branco text-2xl font-serif font-bold text-center tracking-wide">{col.nome}</h3>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

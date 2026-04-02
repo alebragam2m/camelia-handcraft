@@ -9,6 +9,7 @@ function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const categories = ["Todos", "Guardanapos", "Jogos Americanos", "Porta Guardanapos", "Diversos"];
   const [activeCategory, setActiveCategory] = useState("Todos");
+  const [activeCollection, setActiveCollection] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   
   const location = useLocation();
@@ -24,10 +25,17 @@ function ProductsPage() {
       setActiveCategory(catParam);
     }
 
+    const colParam = params.get('col');
+    if (colParam) {
+      setActiveCollection(colParam);
+    } else {
+      setActiveCollection(null);
+    }
+
     const searchParam = params.get('search');
     if (searchParam) {
       setSearchQuery(searchParam.toLowerCase());
-      setActiveCategory("Todos"); // Expand category to search all
+      setActiveCategory("Todos"); 
     } else {
       setSearchQuery('');
     }
@@ -55,9 +63,15 @@ function ProductsPage() {
   };
 
   // Filtra de acordo com o botão clicado
-  let displayedProducts = activeCategory === "Todos" 
-    ? productsList 
-    : productsList.filter(p => p.category === activeCategory);
+  let displayedProducts = productsList;
+
+  if (activeCategory !== "Todos") {
+    displayedProducts = displayedProducts.filter(p => p.category === activeCategory);
+  }
+
+  if (activeCollection) {
+    displayedProducts = displayedProducts.filter(p => p.colecao === activeCollection);
+  }
 
   if (searchQuery) {
     displayedProducts = displayedProducts.filter(p => p.nome && p.nome.toLowerCase().includes(searchQuery));
@@ -82,16 +96,35 @@ function ProductsPage() {
       {/* Seção Filtros e Produtos Minimalistas */}
       <section className="py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Filtros em Carrossel Horizontal (Mobile) */}
-        <div className="flex overflow-x-auto pb-4 mb-12 gap-3 no-scrollbar scroll-smooth">
-          {categories.map((cat, i) => (
-            <button 
-              key={i} 
-              onClick={() => setActiveCategory(cat)}
-              className={`whitespace-nowrap px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-[2px] border transition-all flex-shrink-0 ${activeCategory === cat ? 'bg-primaria text-branco border-primaria shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:border-primaria hover:text-primaria'}`}>
-              {cat}
-            </button>
-          ))}
+        {/* Filtros e Coleção Ativa */}
+        <div className="flex flex-col mb-12">
+          {activeCollection && (
+            <div className="flex items-center justify-between bg-primaria/5 border border-primaria/10 rounded-2xl p-5 mb-8 animate-fade-in">
+              <div className="flex items-center gap-4 text-left">
+                <span className="text-2xl">✨</span>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primaria opacity-60 leading-none mb-2">Coleção Selecionada</p>
+                  <h4 className="text-secundaria font-serif font-bold text-xl">{activeCollection}</h4>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveCollection(null)}
+                className="bg-white text-secundaria px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-gray-100 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all shadow-sm">
+                Limpar Coleção ✕
+              </button>
+            </div>
+          )}
+
+          <div className="flex overflow-x-auto pb-4 gap-3 no-scrollbar scroll-smooth">
+            {categories.map((cat, i) => (
+              <button 
+                key={i} 
+                onClick={() => setActiveCategory(cat)}
+                className={`whitespace-nowrap px-6 py-3 rounded-full text-[10px] font-bold uppercase tracking-[2px] border transition-all flex-shrink-0 ${activeCategory === cat ? 'bg-primaria text-branco border-primaria shadow-md' : 'bg-white text-gray-500 border-gray-100 hover:border-primaria hover:text-primaria'}`}>
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
