@@ -121,13 +121,18 @@ export default function Checkout() {
         }),
       });
 
-      const { url, error } = await response.json();
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Erro no Servidor (${response.status}): ${errorData || "Sem detalhes da falha."}`);
+      }
+
+      const { url } = await response.json();
       
       if (url) {
         clearCart(); // Limpa carrinho antes de ir pro Stripe
         window.location.href = url; // Redireciona para o checkout do Stripe
       } else {
-        throw new Error(error || "Erro ao criar sessão de pagamento.");
+        throw new Error("A API não retornou uma URL de pagamento válida.");
       }
 
     } catch (err) {

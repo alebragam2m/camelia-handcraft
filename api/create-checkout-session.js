@@ -44,16 +44,23 @@ export default async function handler(req, res) {
       },
     });
 
-    // 3. Salvar o ID da sessão no Supabase para reconciliação
-    await supabase
-      .from('sales')
-      .update({ stripe_session_id: session.id })
-      .eq('id', saleId);
+    try {
+      // 3. Salvar o ID da sessão no Supabase para reconciliação
+      await supabase
+        .from('sales')
+        .update({ stripe_session_id: session.id })
+        .eq('id', saleId);
+    } catch (dbErr) {
+      console.warn('Falha ao registrar ID da sessão no banco (Venda ainda válida):', dbErr.message);
+    }
 
     // 4. Retornar a URL para o frontend redirecionar
     return res.status(200).json({ url: session.url });
   } catch (error) {
-    console.error('Erro no Stripe:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('[STRIPE FEEDBACK] Crítico:', error.stack || error.message);
+    return res.status(500).json({ 
+      error: error.message,
+      detail: "Verifique se as chaves da Stripe na Vercel estão corretas."
+    });
   }
 }
