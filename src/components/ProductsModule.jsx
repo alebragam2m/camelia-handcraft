@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useData } from '../context/DataContext';
-import { supabase } from '../supabase';
+import { productService } from '../services/supabaseService';
 import { formatCurrency } from '../utils/formatCurrency';
 
 // --- Categorias de produtos da Camélia ---
@@ -24,8 +24,10 @@ const CATEGORY_COLORS = {
 
 const defaultForm = {
   nome: '', price: '', cost: '', category: 'Porta Guardanapos',
-  colecao: 'Sem linha / Coleção', stock: '', description: '',
-  is_insumo: false, supplier_id: '', measure_cm: '', weight_kg: ''
+  colecao: 'Sem linha / Coleção', stock: '0', description: '',
+  is_insumo: false, show_on_site: true, is_preorder: false,
+  insumos_json: [], 
+  supplier_id: '', measure_cm: '', weight_kg: ''
 };
 
 export default function ProductsModule() {
@@ -35,6 +37,7 @@ export default function ProductsModule() {
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState(defaultForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('geral'); // 'geral' ou 'insumos'
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState('');
   const fileInputRef = useRef();
@@ -44,6 +47,7 @@ export default function ProductsModule() {
     setSelectedFiles([]);
     setEditProduct(null);
     setIsCreating(true);
+    setActiveTab('geral');
   };
 
   const openEditMode = (prod) => {
@@ -53,9 +57,12 @@ export default function ProductsModule() {
       cost: prod.cost || '',
       category: prod.category || 'Diversos',
       colecao: prod.colecao || 'Flores',
-      stock: prod.stock !== undefined ? prod.stock : '',
+      stock: prod.stock !== undefined ? prod.stock : '0',
       description: prod.description || '',
       is_insumo: prod.is_insumo || false,
+      show_on_site: prod.show_on_site !== undefined ? prod.show_on_site : true,
+      is_preorder: prod.is_preorder || false,
+      insumos_json: Array.isArray(prod.insumos_json) ? prod.insumos_json : [],
       supplier_id: prod.supplier_id || '',
       measure_cm: prod.measure_cm || '',
       weight_kg: prod.weight_kg || '',
@@ -63,6 +70,8 @@ export default function ProductsModule() {
     setSelectedFiles([]);
     setEditProduct(prod);
     setIsCreating(true);
+    setUploadProgress('');
+    setActiveTab('geral');
   };
 
   const handleFilesChange = (e) => {
@@ -70,22 +79,17 @@ export default function ProductsModule() {
   };
 
   const uploadImages = async (productId) => {
-    if (selectedFiles.length === 0) return [];
-    setUploadProgress('Enviando imagens...');
-    const urls = [];
-    for (const file of selectedFiles) {
-      const ext = file.name.split('.').pop();
-      const path = `products/${productId}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('products').upload(path, file);
-      if (!error) {
-        const { data: urlData } = supabase.storage.from('products').getPublicUrl(path);
-        if (urlData?.publicUrl) urls.push(urlData.publicUrl);
-      } else {
-        console.error("Erro upload:", error);
-      }
+    if (selectedFiles.length === 0) return;
+    setUploadProgress('Enviando imagem...');
+    try {
+      // Usa o service layer — persiste a URL no banco automaticamente
+      await productService.uploadImage(productId, selectedFiles[0]);
+    } catch (err) {
+      console.error('[ProductsModule] Erro no upload:', err.message);
+      // Não lança — o produto já está salvo, o upload falhou silenciosamente
+    } finally {
+      setUploadProgress('');
     }
-    setUploadProgress('');
-    return urls;
   };
 
   const handleSave = async (e) => {
@@ -94,39 +98,36 @@ export default function ProductsModule() {
     try {
       const payload = {
         nome: formData.nome,
-        price: parseFloat(formData.price) || 0,
-        cost: parseFloat(formData.cost) || 0,
+        price: formData.price,
+        cost: formData.cost,
         category: formData.category,
         colecao: formData.colecao,
-        stock: parseInt(formData.stock) || 0,
+        stock: formData.stock,
         description: formData.description,
         is_insumo: formData.is_insumo,
-        supplier_id: formData.supplier_id ? parseInt(formData.supplier_id) : null,
-        measure_cm: formData.measure_cm || null,
-        weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
+        show_on_site: formData.show_on_site,
+        is_preorder: formData.is_preorder,
+        insumos_json: formData.insumos_json,
+        // Campos opcionais: só inclui se preenchido (nunca trava o cadastro)
+        ...(formData.supplier_id && { supplier_id: formData.supplier_id }),
+        ...(formData.measure_cm && { measure_cm: formData.measure_cm }),
+        ...(formData.weight_kg && { weight_kg: formData.weight_kg }),
       };
 
-      let res;
-      if (editProduct) {
-        res = await actions.upsertProduct(payload, editProduct.id);
-      } else {
-        res = await actions.upsertProduct(payload);
-      }
+      const saved = await productService.save(payload, editProduct?.id || null);
+      const targetId = saved?.id || editProduct?.id;
 
-      // Segurança: Verifica se o ID foi retornado antes de tentar o upload
-      const targetId = editProduct ? editProduct.id : res?.id;
-
+      // Upload da foto (se houver) — feito após ter o ID garantido
       if (targetId && selectedFiles.length > 0) {
-        const urls = await uploadImages(targetId);
-        if (urls.length > 0) {
-          await actions.upsertProduct({ image_url: urls[0] }, targetId);
-        }
+        await uploadImages(targetId);
       }
 
       setIsCreating(false);
       setEditProduct(null);
+      setFormData(defaultForm);
+      setSelectedFiles([]);
     } catch (err) {
-      alert("Erro ao gravar produto: " + err.message);
+      alert('Erro ao gravar produto: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -138,6 +139,28 @@ export default function ProductsModule() {
       await actions.deleteProduct(prod.id);
       if (editProduct?.id === prod.id) { setIsCreating(false); setEditProduct(null); }
     } catch (err) { alert("Erro ao excluir: " + err.message); }
+  };
+
+  // --- Gerenciamento da Ficha Técnica (Insumos) ---
+  const addInsumo = () => {
+    const newItem = { id: Date.now(), nome: '', qtd: '', unidade: 'm', custo: '' };
+    setFormData({ ...formData, insumos_json: [...formData.insumos_json, newItem] });
+  };
+
+  const removeInsumo = (id) => {
+    setFormData({ ...formData, insumos_json: formData.insumos_json.filter(i => i.id !== id) });
+  };
+
+  const updateInsumo = (id, field, value) => {
+    setFormData({
+      ...formData,
+      insumos_json: formData.insumos_json.map(i => i.id === id ? { ...i, [field]: value } : i)
+    });
+  };
+
+  const duplicateInsumo = (item) => {
+    const newItem = { ...item, id: Date.now() + Math.random() };
+    setFormData({ ...formData, insumos_json: [...formData.insumos_json, newItem] });
   };
 
   // Group by category
@@ -157,162 +180,248 @@ export default function ProductsModule() {
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-y-auto max-h-[95vh] border border-white/20">
             <div className="bg-gray-50 px-8 py-6 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
               <div>
-                <h3 className="font-serif font-bold text-secundaria text-2xl">{editProduct ? 'Editar Produto' : 'Novo Produto'}</h3>
-                <p className="text-[10px] text-primaria font-bold uppercase tracking-widest mt-1">{formData.category}</p>
+                <h3 className="font-serif font-bold text-secundaria text-2xl">
+                  {editProduct ? 'Editar' : 'Novo'} {formData.is_insumo ? 'Insumo' : 'Produto'}
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${formData.is_insumo ? 'bg-teal-100 text-teal-700' : 'bg-primaria/10 text-primaria'}`}>
+                    {formData.is_insumo ? 'Insumo / Suprimento' : formData.category}
+                  </span>
+                  {!formData.is_insumo && formData.colecao !== 'Sem linha / Coleção' && (
+                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">• {formData.colecao}</span>
+                  )}
+                </div>
               </div>
-              <button onClick={() => { setIsCreating(false); setEditProduct(null); }} className="text-gray-400 hover:text-red-500 font-bold text-[10px] uppercase">Fechar [X]</button>
+              <button 
+                onClick={() => { setIsCreating(false); setEditProduct(null); }} 
+                className="text-gray-400 hover:text-red-500 font-bold text-[10px] uppercase"
+              >
+                Fechar [X]
+              </button>
+            </div>
+
+            {/* TAB NAVIGATION */}
+            <div className="flex border-b border-gray-100 bg-white">
+              <button 
+                type="button"
+                onClick={() => setActiveTab('geral')}
+                className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-[2px] transition-all ${activeTab === 'geral' ? 'text-primaria border-b-2 border-primaria bg-primaria/5' : 'text-gray-400 hover:text-secundaria'}`}>
+                📄 Dados Gerais
+              </button>
+              <button 
+                type="button"
+                onClick={() => setActiveTab('insumos')}
+                className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-[2px] transition-all ${activeTab === 'insumos' ? 'text-primaria border-b-2 border-primaria bg-primaria/5' : 'text-gray-400 hover:text-secundaria'}`}>
+                🧵 Ficha Técnica (Insumos)
+              </button>
             </div>
 
             <form onSubmit={handleSave} className="p-8 space-y-5">
-
-              {/* Toggle: Produto Artesanal vs Insumo */}
-              <div className="flex gap-4 mb-2">
-                <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${!formData.is_insumo ? 'bg-primaria/10 border-primaria text-primaria' : 'bg-gray-50 border-transparent text-gray-400'}`}>
-                  <input type="radio" className="hidden" checked={!formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: false })} />
-                  🎨 Produto Artesanal
-                </label>
-                <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${formData.is_insumo ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>
-                  <input type="radio" className="hidden" checked={formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: true, category: 'Insumos' })} />
-                  🧵 Insumo / Matéria-Prima
-                </label>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-                {/* Nome */}
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                    {formData.is_insumo ? 'Nome do Insumo *' : 'Nome do Produto / Obra *'}
-                  </label>
-                  <input type="text" required value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })}
-                    placeholder={formData.is_insumo ? 'Ex: Linha de Seda Preta N° 8' : 'Ex: Porta Guardanapo Floral Camélia'}
-                    className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
-                </div>
-
-                {/* Categoria */}
-                {!formData.is_insumo && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Linha / Categoria</label>
-                    <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none">
-                      {PRODUCT_CATEGORIES.filter(c => c !== 'Insumos').map(c => <option key={c}>{c}</option>)}
-                    </select>
+              {activeTab === 'geral' && (
+                <div className="space-y-6 animate-fade-in">
+                  {/* Toggle: Produto Artesanal vs Insumo */}
+                  <div className="flex gap-4">
+                    <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${!formData.is_insumo ? 'bg-primaria/10 border-primaria text-primaria' : 'bg-gray-50 border-transparent text-gray-400'}`}>
+                      <input type="radio" className="hidden" checked={!formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: false, category: formData.category === 'Insumos' ? 'Diversos' : formData.category })} />
+                      🎨 Produto Artesanal
+                    </label>
+                    <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${formData.is_insumo ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>
+                      <input type="radio" className="hidden" checked={formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: true, category: 'Insumos' })} />
+                      🧵 Insumo / Matéria-Prima
+                    </label>
                   </div>
-                )}
 
-                {/* Fornecedor (Insumos) */}
-                {formData.is_insumo && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Fornecedor (Pré-Cadastrado) *</label>
-                    <select required value={formData.supplier_id} onChange={e => setFormData({ ...formData, supplier_id: e.target.value })}
-                      className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none">
-                      <option value="">Selecione o Fornecedor...</option>
-                      {suppliers.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
-                    </select>
-                    {suppliers.length === 0 && <p className="text-[10px] text-red-500 mt-1 font-bold">⚠️ Cadastre um Fornecedor primeiro na aba "Fornecedores".</p>}
+                  {/* NOVAS FLAGS DE VISIBILIDADE E ENCOMENDA */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.show_on_site ? 'border-primaria/30 bg-primaria/5' : 'border-gray-100 bg-gray-50'}`}>
+                       <input type="checkbox" checked={formData.show_on_site} onChange={e => setFormData({...formData, show_on_site: e.target.checked})} className="w-5 h-5 accent-primaria" />
+                       <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-secundaria">Mostrar no Site</p>
+                          <p className="text-[9px] text-gray-400 font-medium">Visível para clientes</p>
+                       </div>
+                    </label>
+                    <label className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${formData.is_preorder ? 'border-amber-300 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}>
+                       <input type="checkbox" checked={formData.is_preorder} onChange={e => setFormData({...formData, is_preorder: e.target.checked})} className="w-5 h-5 accent-amber-600" />
+                       <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-secundaria">Sob Encomenda</p>
+                          <p className="text-[9px] text-gray-400 font-medium text-amber-700/60">Botão "Encomendar"</p>
+                       </div>
+                    </label>
                   </div>
-                )}
 
-                {/* Preço de Custo */}
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                    {formData.is_insumo ? 'Valor Unitário (R$) *' : 'Custo de Fabricação (R$)'}
-                  </label>
-                  <input type="number" step="0.01" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })}
-                    placeholder="0.00" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
-                </div>
-
-                {/* Preço de Venda - só para artesanais */}
-                {!formData.is_insumo && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Preço de Venda (R$) *</label>
-                    <input type="number" step="0.01" required value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })}
-                      placeholder="0.00" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
-                  </div>
-                )}
-
-                {/* Quantidade em Estoque */}
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
-                    {formData.is_insumo ? 'Quantidade em Estoque *' : 'Unidades Disponíveis *'}
-                  </label>
-                  <input type="number" min="0" required value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                    placeholder="0" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
-                </div>
-
-                {/* Medidas de Insumo */}
-                {formData.is_insumo && (
-                  <>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Medida (cm, metros, ml...)</label>
-                      <input type="text" value={formData.measure_cm} onChange={e => setFormData({ ...formData, measure_cm: e.target.value })}
-                        placeholder="Ex: 150cm ou 2m" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Nome */}
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                        {formData.is_insumo ? 'Nome do Insumo *' : 'Nome do Produto / Obra *'}
+                      </label>
+                      <input type="text" required value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })}
+                        placeholder={formData.is_insumo ? 'Ex: Linha de Seda Preta N° 8' : 'Ex: Porta Guardanapo Floral Camélia'}
+                        className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
                     </div>
+
+                    {/* Categoria */}
+                    {!formData.is_insumo && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Linha / Categoria</label>
+                        <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}
+                          className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none">
+                          {PRODUCT_CATEGORIES.filter(c => c !== 'Insumos').map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Fornecedor (Insumos) */}
+                    {formData.is_insumo && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Fornecedor *</label>
+                        <select required value={formData.supplier_id} onChange={e => setFormData({ ...formData, supplier_id: e.target.value })}
+                          className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none">
+                          <option value="">Selecione...</option>
+                          {suppliers.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Preço de Custo */}
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Peso (kg) — Ex: 0.50</label>
-                      <input type="number" step="0.001" value={formData.weight_kg} onChange={e => setFormData({ ...formData, weight_kg: e.target.value })}
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                        {formData.is_insumo ? 'Valor Unitário (R$) *' : 'Custo de Fabricação (R$)'}
+                      </label>
+                      <input type="number" step="0.01" value={formData.cost} onChange={e => setFormData({ ...formData, cost: e.target.value })}
                         placeholder="0.00" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
                     </div>
-                  </>
-                )}
 
-                {/* Coleção / Tag */}
-                {!formData.is_insumo && (
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Coleção</label>
-                    <select value={formData.colecao} onChange={e => setFormData({ ...formData, colecao: e.target.value })}
-                      className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none">
-                      <option value="Sem linha / Coleção">Sem linha / Coleção</option>
-                      <option value="Flores">Flores</option>
-                      <option value="Frutas e legumes">Frutas e legumes</option>
-                      <option value="Provence">Provence</option>
-                      <option value="Páscoa">Páscoa</option>
-                      <option value="Círio">Círio</option>
-                      <option value="Natal">Natal</option>
-                      <option value="Verão">Verão</option>
-                      <option value="Diversos">Diversos</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Descrição */}
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Descrição</label>
-                  <textarea rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Detalhe o produto, técnica artesanal, materiais..." className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm text-secundaria outline-none resize-none" />
-                </div>
-
-                {/* Upload de Imagens */}
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Fotos do Produto</label>
-                  {editProduct?.image_url && (
-                    <img src={editProduct.image_url} alt="" className="w-24 h-24 object-cover rounded-xl mb-3 border border-gray-200" />
-                  )}
-                  <div
-                    onClick={() => fileInputRef.current.click()}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-primaria hover:bg-primaria/5 transition-colors">
-                    <p className="text-sm font-bold text-gray-400">📸 Clique para selecionar fotos</p>
-                    <p className="text-[10px] text-gray-400 mt-1">JPG, PNG, WEBP — Selecione uma ou várias</p>
-                    {selectedFiles.length > 0 && (
-                      <div className="mt-3 text-[10px] text-primaria font-bold">{selectedFiles.length} foto(s) selecionada(s)</div>
+                    {/* Preço de Venda */}
+                    {!formData.is_insumo && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Preço de Venda (R$) *</label>
+                        <input type="number" step="0.01" required value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })}
+                          placeholder="0.00" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
+                      </div>
                     )}
-                    {uploadProgress && <p className="text-[10px] text-primaria font-bold animate-pulse mt-2">{uploadProgress}</p>}
+
+                    {/* Estoque */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Estoque Disponível *</label>
+                      <input type="number" min="0" required value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })}
+                        placeholder="0" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none" />
+                    </div>
+
+                    {/* Coleção */}
+                    {!formData.is_insumo && (
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Coleção</label>
+                        <select value={formData.colecao} onChange={e => setFormData({ ...formData, colecao: e.target.value })}
+                          className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm font-bold text-secundaria outline-none">
+                          <option value="Sem linha / Coleção">Sem linha / Coleção</option>
+                          <option value="Flores">Flores</option>
+                          <option value="Frutas e legumes">Frutas e legumes</option>
+                          <option value="Provence">Provence</option>
+                          <option value="Páscoa">Páscoa</option>
+                          <option value="Círio">Círio</option>
+                          <option value="Natal">Natal</option>
+                          <option value="Verão">Verão</option>
+                          <option value="Diversos">Diversos</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Descrição */}
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Descrição</label>
+                      <textarea rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Detalhes do produto..." className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm text-secundaria outline-none resize-none" />
+                    </div>
+
+                    {/* Upload de Imagens */}
+                    <div className="md:col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Fotos do Produto</label>
+                      {editProduct?.image_url && (
+                        <img src={editProduct.image_url} alt="" className="w-24 h-24 object-cover rounded-xl mb-3 border border-gray-200" />
+                      )}
+                      <div
+                        onClick={() => fileInputRef.current.click()}
+                        className="w-full border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-primaria hover:bg-primaria/5 transition-colors">
+                        <p className="text-sm font-bold text-gray-400">📸 Clique para selecionar fotos</p>
+                        {selectedFiles.length > 0 && <p className="text-[10px] text-primaria font-bold mt-2">{selectedFiles.length} foto(s) selecionada(s)</p>}
+                        {uploadProgress && <p className="text-[10px] text-primaria font-bold animate-pulse mt-2">{uploadProgress}</p>}
+                      </div>
+                      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFilesChange} />
+                    </div>
                   </div>
-                  <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFilesChange} />
                 </div>
-              </div>
-
-              <button type="submit" disabled={isSaving}
-                className="w-full mt-4 bg-secundaria text-white font-bold py-5 rounded-xl uppercase tracking-widest text-sm hover:bg-black transition-colors shadow-lg">
-                {isSaving ? 'Gravando...' : editProduct ? 'Salvar Alterações' : 'Cadastrar Produto'}
-              </button>
-
-              {editProduct && (
-                <button type="button" onClick={() => handleDelete(editProduct)}
-                  className="w-full mt-2 text-red-500 hover:text-red-700 font-bold text-[10px] uppercase tracking-widest underline py-2">
-                  Excluir este produto permanentemente
-                </button>
               )}
+
+              {/* CONTEÚDO: FICHA TÉCNICA (INSUMOS) */}
+              {activeTab === 'insumos' && (
+                <div className="space-y-6 animate-fade-in min-h-[300px]">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Materiais Utilizados</h4>
+                    <button type="button" onClick={addInsumo} className="bg-primaria/10 text-primaria px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primaria hover:text-white transition-all">
+                      + Adicionar Item
+                    </button>
+                  </div>
+
+                  {formData.insumos_json.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-3xl bg-gray-50/50">
+                      <span className="text-4xl grayscale opacity-20 block mb-3">🧵</span>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Nenhum material listado ainda</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {formData.insumos_json.map((item) => (
+                        <div key={item.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col gap-3 group relative">
+                          <div className="grid grid-cols-12 gap-3">
+                            <div className="col-span-12 md:col-span-5">
+                              <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest ml-1">Material</label>
+                              <input type="text" value={item.nome} onChange={e => updateInsumo(item.id, 'nome', e.target.value)} placeholder="Ex: Fita de Cetim" className="w-full bg-white border border-gray-100 p-3 rounded-xl text-[12px] font-bold text-secundaria outline-none" />
+                            </div>
+                            <div className="col-span-4 md:col-span-2">
+                              <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest ml-1">Qtd</label>
+                              <input type="number" step="0.01" value={item.qtd} onChange={e => updateInsumo(item.id, 'qtd', e.target.value)} placeholder="0.00" className="w-full bg-white border border-gray-100 p-3 rounded-xl text-[12px] font-bold text-secundaria outline-none" />
+                            </div>
+                            <div className="col-span-4 md:col-span-2">
+                              <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest ml-1">Unid</label>
+                              <select value={item.unidade} onChange={e => updateInsumo(item.id, 'unidade', e.target.value)} className="w-full bg-white border border-gray-100 p-3 rounded-xl text-[12px] font-bold text-secundaria outline-none">
+                                <option value="un">un</option>
+                                <option value="m">m</option>
+                                <option value="cm">cm</option>
+                                <option value="g">g</option>
+                                <option value="kg">kg</option>
+                                <option value="ml">ml</option>
+                              </select>
+                            </div>
+                            <div className="col-span-4 md:col-span-3">
+                              <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest ml-1">Custo (R$)</label>
+                              <input type="number" step="0.01" value={item.custo} onChange={e => updateInsumo(item.id, 'custo', e.target.value)} placeholder="0.00" className="w-full bg-white border border-gray-100 p-3 rounded-xl text-[12px] font-bold text-secundaria outline-none" />
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-end gap-2">
+                            <button type="button" onClick={() => duplicateInsumo(item)} className="text-[8px] font-bold text-primaria uppercase tracking-widest hover:underline">Duplicar</button>
+                            <button type="button" onClick={() => removeInsumo(item.id)} className="text-[8px] font-bold text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors">Remover</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-gray-100">
+                <button type="submit" disabled={isSaving}
+                  className="w-full bg-secundaria text-white font-bold py-5 rounded-xl uppercase tracking-widest text-sm hover:bg-black transition-colors shadow-lg">
+                  {isSaving ? 'Gravando...' : editProduct ? 'Salvar Alterações' : 'Cadastrar Produto'}
+                </button>
+
+                {editProduct && (
+                  <button type="button" onClick={() => handleDelete(editProduct)}
+                    className="w-full mt-2 text-red-500 hover:text-red-700 font-bold text-[10px] uppercase tracking-widest underline py-2">
+                    Excluir este produto permanentemente
+                  </button>
+                )}
+              </div>
             </form>
           </div>
         </div>

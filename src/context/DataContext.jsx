@@ -1,199 +1,135 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useCameliaData, notifyDbUpdate } from '../hooks/useCameliaData';
-import { supabase } from '../supabase';
-import { db } from '../services/db';
+/**
+ * DataContext — Provedor Global de Dados (Admin)
+ * Usa o Service Layer centralizado. Sem SWR, sem colcha de retalhos.
+ */
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  productService,
+  saleService,
+  clientService,
+  supplierService,
+  transactionService,
+} from '../services/supabaseService';
 
-const DataContext = createContext();
+const DataContext = createContext(null);
 
 export function DataProvider({ children }) {
+  const [products, setProducts] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  // Monitorar conexão básica (Estabilidade de rede)
+  // ── Monitor de conexão ──────────────────────────────────────────────────────
   useEffect(() => {
-    const updateStatus = () => setIsOnline(navigator.onLine);
-    window.addEventListener('online', updateStatus);
-    window.addEventListener('offline', updateStatus);
-    return () => {
-      window.removeEventListener('online', updateStatus);
-      window.removeEventListener('offline', updateStatus);
-    };
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // --- REATIVIDADE COM SWR (MOTOR PRO V2 - VEREDITO TÉCNICO) ---
-  const productsResult = useCameliaData('products');
-  const salesResult = useCameliaData('sales');
-  const clientsResult = useCameliaData('clients');
-  const suppliersResult = useCameliaData('suppliers');
-  const transactionsResult = useCameliaData('transactions');
-
-  // --- ACTIONS ATÔMICAS (PROTEÇÃO DE BANCO VIA RPC) ---
-  const actions = {
-    /**
-     * Processar Venda (Fidelidade Total em Transação Única)
-     */
-    async createSale(saleData, itemsData) {
-      console.log('[Motor Pro] Disparando Venda Atômica via RPC...');
-      try {
-        const { data, error } = await supabase.rpc('process_sale', {
-          sale_data: saleData,
-          items_data: itemsData
-        });
-        
-        if (error) throw error;
-
-        // Sucesso: Notificar Globalmente via WebSocket
-        console.log('[Motor Pro] Sucesso: Propagando atualização em tempo real...');
-        await notifyDbUpdate('all');
-        
-        // Revalidar caches locais imediatamente
-        actions.refresh();
-        return data;
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha na Venda Atômica:', err);
-        throw err;
-      }
-    },
-
-    /**
-     * Ajustar Estoque (Auditado e em Tempo Real)
-     */
-    async adjustStock(productId, quantity, type, notes = '') {
-      console.log('[Motor Pro] Ajustando Estoque via RPC...');
-      try {
-        const { data, error } = await supabase.rpc('handle_inventory_adjustment', {
-          p_product_id: parseInt(productId),
-          p_quantity: parseInt(quantity),
-          p_type: type,
-          p_notes: notes
-        });
-
-        if (error) throw error;
-
-        // Sucesso: Notificar site e app
-        await notifyDbUpdate('products');
-        productsResult.mutate();
-        return data;
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha no Ajuste de Estoque:', err);
-        throw err;
-      }
-    },
-
-    // Gestão Financeira (Reativa)
-    async upsertTransaction(payload, id = null) {
-      console.log('[Motor Pro] Registrando Transação Financeira...');
-      try {
-        const { data, error } = await db.upsertTransaction(payload, id);
-        if (error) throw error;
-        await notifyDbUpdate('transactions');
-        transactionsResult.mutate();
-        return data;
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha Financeira:', err);
-        throw err;
-      }
-    },
-
-    async deleteTransaction(id) {
-      console.log('[Motor Pro] Excluindo Transação...');
-      try {
-        const { error } = await db.deleteTransaction(id);
-        if (error) throw error;
-        await notifyDbUpdate('transactions');
-        transactionsResult.mutate();
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha na Exclusão:', err);
-        throw err;
-      }
-    },
-
-    // Gestão de Fornecedores (Reativa)
-    async upsertSupplier(payload, id = null) {
-      console.log('[Motor Pro] Homologando Parceiro/Insumo...');
-      try {
-        const { data, error } = await db.upsertSupplier(payload, id);
-        if (error) throw error;
-        await notifyDbUpdate('suppliers');
-        suppliersResult.mutate();
-        return data;
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha no Cadastro de Fornecedor:', err);
-        throw err;
-      }
-    },
-
-    async deleteSupplier(id) {
-      console.log('[Motor Pro] Removendo Fornecedor...');
-      try {
-        const { error } = await db.deleteSupplier(id);
-        if (error) throw error;
-        await notifyDbUpdate('suppliers');
-        suppliersResult.mutate();
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha na Remoção:', err);
-        throw err;
-      }
-    },
-
-    // Gestão de Clientes (Reativa)
-    async upsertClient(client, id = null) {
-      console.log('[Motor Pro] Registrando no CRM...');
-      try {
-        const { data, error } = await db.upsertClient(client, id);
-        if (error) throw error;
-        await notifyDbUpdate('clients');
-        clientsResult.mutate();
-        return data;
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha no CRM:', err);
-        throw err;
-      }
-    },
-
-    // Gestão de Produtos (Reativa)
-    async upsertProduct(product, id = null) {
-      console.log('[Motor Pro] Atualizando Catálogo...');
-      try {
-        const { data, error } = await db.upsertProduct(product, id);
-        if (error) throw error;
-        await notifyDbUpdate('products');
-        productsResult.mutate();
-        return data;
-      } catch (err) {
-        console.error('[Motor Pro Error] Falha no Catálogo:', err);
-        throw err;
-      }
-    },
-
-    /**
-     * Sincronização Manual (Forçar Refresh de Fundo)
-     */
-    refresh: () => {
-      console.log('[Motor Pro] Revalidação de Cache SWR Solicitada.');
-      productsResult.mutate();
-      salesResult.mutate();
-      clientsResult.mutate();
-      suppliersResult.mutate();
-      transactionsResult.mutate();
+  // ── Carga inicial ───────────────────────────────────────────────────────────
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [p, s, c, sup, t] = await Promise.all([
+        productService.getAll(),
+        saleService.getAll(),
+        clientService.getAll(),
+        supplierService.getAll(),
+        transactionService.getAll(),
+      ]);
+      setProducts(p);
+      setSales(s);
+      setClients(c);
+      setSuppliers(sup);
+      setTransactions(t);
+    } catch (err) {
+      console.error('[DataContext] Erro ao carregar dados:', err.message);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const value = {
-    isOnline,
-    products: productsResult.data || [],
-    sales: salesResult.data || [],
-    clients: clientsResult.data || [],
-    suppliers: suppliersResult.data || [],
-    transactions: transactionsResult.data || [],
-    // O loading só é true se as fontes principais ainda estiverem buscando e não houveram erros fatais
-    loading: (productsResult.isLoading || salesResult.isLoading) && !productsResult.isError && !salesResult.isError,
-    isError: productsResult.isError || salesResult.isError,
-    error: productsResult.isError || salesResult.isError || null,
-    actions
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  // ── Realtime: produtos ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const unsubscribe = productService.subscribe(async () => {
+      const updated = await productService.getAll();
+      setProducts(updated);
+    });
+    return unsubscribe;
+  }, []);
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
+  const actions = {
+    // Produtos
+    async upsertProduct(payload, id = null) {
+      const saved = await productService.save(payload, id);
+      const updated = await productService.getAll();
+      setProducts(updated);
+      return saved;
+    },
+    async deleteProduct(id) {
+      await productService.remove(id);
+      setProducts(prev => prev.filter(p => p.id !== id));
+    },
+
+    // Vendas
+    async createSale(saleData, itemsData) {
+      const result = await saleService.processSale(saleData, itemsData);
+      const [s, p] = await Promise.all([saleService.getAll(), productService.getAll()]);
+      setSales(s);
+      setProducts(p);
+      return result;
+    },
+
+    // Clientes
+    async upsertClient(payload, id = null) {
+      const saved = await clientService.save(payload, id);
+      const updated = await clientService.getAll();
+      setClients(updated);
+      return saved;
+    },
+
+    // Fornecedores
+    async upsertSupplier(payload, id = null) {
+      const saved = await supplierService.save(payload, id);
+      const updated = await supplierService.getAll();
+      setSuppliers(updated);
+      return saved;
+    },
+    async deleteSupplier(id) {
+      await supplierService.remove(id);
+      setSuppliers(prev => prev.filter(s => s.id !== id));
+    },
+
+    // Finanças
+    async upsertTransaction(payload, id = null) {
+      const saved = await transactionService.save(payload, id);
+      const updated = await transactionService.getAll();
+      setTransactions(updated);
+      return saved;
+    },
+    async deleteTransaction(id) {
+      await transactionService.remove(id);
+      setTransactions(prev => prev.filter(t => t.id !== id));
+    },
+
+    // Refresh manual
+    refresh: loadAll,
   };
 
   return (
-    <DataContext.Provider value={value}>
+    <DataContext.Provider value={{
+      isOnline, loading,
+      products, sales, clients, suppliers, transactions,
+      actions,
+    }}>
       {children}
     </DataContext.Provider>
   );

@@ -92,14 +92,14 @@ function ProductDetail() {
                {/* Central de Conversão */}
                <div className="space-y-6 bg-white p-8 border border-gray-100 rounded-3xl shadow-sm">
                   <div className="flex items-center justify-between text-sm font-bold uppercase tracking-widest text-gray-500 pb-6 border-b border-gray-100">
-                     <span>Estoque Disponível</span>
-                     <span className={`px-4 py-1 rounded-full text-[10px] flex items-center gap-2 ${product.stock > 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}`}>
-                        <span className={`w-2 h-2 rounded-full ${product.stock > 0 ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></span>
-                        {product.stock > 0 ? `${product.stock} unidades` : "Esgotado"}
+                     <span>Disponibilidade</span>
+                     <span className={`px-4 py-1 rounded-full text-[10px] flex items-center gap-2 ${product.stock > 0 && !product.is_preorder ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-700"}`}>
+                        <span className={`w-2 h-2 rounded-full ${product.stock > 0 && !product.is_preorder ? "bg-green-500 animate-pulse" : "bg-amber-500"}`}></span>
+                        {product.is_preorder ? "Sob Encomenda" : (product.stock > 0 ? `${product.stock} unidades` : "Sob Encomenda (Esgotado no site)")}
                      </span>
                   </div>
 
-                  {product.stock > 0 && (
+                  {(product.stock > 0 || product.is_preorder) ? (
                     <div className="flex items-center gap-6">
                       <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                         <button 
@@ -108,16 +108,21 @@ function ProductDetail() {
                         >−</button>
                         <span className="w-12 text-center font-bold text-secundaria">{quantity}</span>
                         <button 
-                          onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                          onClick={() => setQuantity(quantity + 1)}
                           className="px-4 py-3 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors font-bold text-lg"
                         >+</button>
                       </div>
                       
                       <button 
                         onClick={handleAddToCart}
-                        className="flex-1 bg-secundaria text-white font-bold py-4 rounded-xl shadow-xl shadow-secundaria/10 hover:bg-black transition-all uppercase tracking-[3px] text-[11px] active:scale-95">
-                        Adicionar ao Carrinho
+                        className={`flex-1 font-bold py-4 rounded-xl shadow-xl transition-all uppercase tracking-[3px] text-[11px] active:scale-95 ${product.is_preorder || product.stock <= 0 ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-900/10' : 'bg-secundaria text-white shadow-secundaria/10 hover:bg-black'}`}>
+                        {product.is_preorder || product.stock <= 0 ? 'Encomendar agora' : 'Adicionar ao Carrinho'}
                       </button>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 text-center">
+                       <p className="text-[10px] font-bold uppercase tracking-widest text-amber-800">Esta peça está sendo produzida</p>
+                       <p className="text-[9px] text-amber-700/60 font-medium">Você ainda pode encomendar clicando no botão acima ou via WhatsApp.</p>
                     </div>
                   )}
 

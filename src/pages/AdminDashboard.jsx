@@ -7,7 +7,7 @@ import StockHistoryModule from '../components/StockHistoryModule';
 import SuppliersModule from '../components/SuppliersModule';
 import ProductsModule from '../components/ProductsModule';
 import UsersModule from '../components/UsersModule';
-import { db } from '../services/db';
+import { productService } from '../services/supabaseService';
 
 import { useData } from '../context/DataContext';
 
@@ -72,18 +72,24 @@ function AdminDashboard() {
     }
   };
 
-  const [formData, setFormData] = useState({ 
-    nome: '', 
-    price: '', 
-    cost: '', 
-    category: 'Porta Guardanapos', 
-    colecao: 'Sem linha / Coleção', 
-    stock: '', 
-    description: '' 
-  });
+  const defaultProductForm = {
+    nome: '',
+    price: '',
+    stock: '0',
+    cost: '',
+    category: 'Porta Guardanapos',
+    colecao: 'Sem linha / Coleção',
+    description: '',
+    is_insumo: false,
+    show_on_site: true,
+    is_preorder: false,
+    insumos_json: [],
+  };
+  const [formData, setFormData] = useState(defaultProductForm);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [isSavingSale, setIsSavingSale] = useState(false);
+  const [productTab, setProductTab] = useState('geral'); // 'geral' or 'insumos'
   const [saleForm, setSaleForm] = useState({ client_id: '', payment_method: 'Pix', shipping_cost: '', discount: '', status: 'Paga' });
   const [cartItems, setCartItems] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -147,46 +153,39 @@ function AdminDashboard() {
     e.preventDefault();
     setIsSavingProduct(true);
     try {
-      // 1. Gravar inicialmente o produto sem foto para garantir o ID rápido
-      const payload = {
+      // 1. Salva o produto via service layer centralizado
+      const saved = await productService.save({
         nome: formData.nome,
-        price: parseFloat(formData.price) || 0,
-        cost: parseFloat(formData.cost) || 0,
-        category: formData.category,
+        price: formData.price,
+        cost: formData.cost,
+        category: formData.is_insumo ? 'Insumos' : formData.category,
         colecao: formData.colecao,
-        stock: parseInt(formData.stock) || 0,
-        description: formData.description
-      };
-      
-      const newProduct = await actions.upsertProduct(payload);
-      const targetId = newProduct?.id;
+        stock: formData.stock,
+        description: formData.description,
+        is_insumo: formData.is_insumo,
+        show_on_site: formData.show_on_site,
+        is_preorder: formData.is_preorder,
+        insumos_json: formData.insumos_json || [],
+      });
 
-      if (!targetId) throw new Error("O servidor não confirmou o ID do novo produto. Verifique sua conexão.");
-
-      // 2. Se houver fotos, fazer upload vinculando ao ID
-      if (selectedFiles.length > 0) {
-        const photoUrls = [];
-        for (const file of selectedFiles) {
-          const fileExt = file.name.split('.').pop();
-          const filePath = `products/${targetId}/${Date.now()}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file);
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
-            photoUrls.push(publicUrl);
-          }
-        }
-        
-        // 3. Atualizar produto com o link da primeira imagem se o upload deu certo
-        if (photoUrls.length > 0) {
-          await actions.upsertProduct({ image_url: photoUrls[0] }, targetId);
+      // 2. Upload de foto vinculado ao ID (se houver)
+      if (saved?.id && selectedFiles.length > 0) {
+        try {
+          await productService.uploadImage(saved.id, selectedFiles[0]);
+        } catch (uploadErr) {
+          console.warn('[Dashboard] Upload falhou, produto salvo sem foto:', uploadErr.message);
         }
       }
-      
+
       setIsProductModalOpen(false);
-      setFormData({ nome: '', price: '', cost: '', category: 'Porta Guardanapos', colecao: 'Sem linha / Coleção', stock: '', description: '' });
+      setFormData(defaultProductForm);
       setSelectedFiles([]);
-    } catch (err) { alert("Erro ao criar produto: " + err.message); }
-    setIsSavingProduct(false);
+      setProductTab('geral');
+    } catch (err) {
+      alert('Erro ao criar produto: ' + err.message);
+    } finally {
+      setIsSavingProduct(false);
+    }
   };
 
   const stripLeadingZeros = (val) => val === '' ? '' : Number(val).toString();
@@ -259,17 +258,8 @@ function AdminDashboard() {
   const qtdVendasDia = vendas.filter(v => v.created_at?.startsWith(todayStr)).length;
   const qtdVendasMes = vMes.length;
 
-  if (loading && (!produtos || produtos.length === 0)) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#F8F8FC] gap-4">
-          <div className="w-12 h-12 border-4 border-[#333333]/10 border-t-[#333333] rounded-full animate-spin"></div>
-          <div className="text-center">
-            <p className="text-[#333333] font-serif font-bold text-lg animate-pulse tracking-widest uppercase">Carregando Camélia...</p>
-            <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">Estabilizando Motor Pro v2</p>
-          </div>
-      </div>
-    );
-  }
+  // Sem tela de loading bloqueante — o layout renderiza imediatamente
+  // Os dados aparecem assim que chegam do Supabase
 
   return (
     <div className="bg-[#F8F8FC] min-h-screen text-[#333333] font-sans selection:bg-[#7262F1] selection:text-white">
@@ -628,54 +618,141 @@ function AdminDashboard() {
       )}
 
       {isProductModalOpen && (
-         <div className="fixed inset-0 bg-secundaria/60 backdrop-blur z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-y-auto p-10 relative">
-                <button onClick={() => setIsProductModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-colors mb-4">
-                   Fechar [X]
-                </button>
-
-                <h3 className="text-2xl font-serif font-bold mb-6">Cadastrar Peça</h3>
-               <form onSubmit={handleCreateProduct} className="space-y-4">
-                  <input type="file" multiple onChange={handleFileChange} className="w-full border-dashed border-2 p-6 rounded-xl text-center cursor-pointer" />
-                  <div className="grid grid-cols-2 gap-4">
-                     <input type="text" placeholder="Nome" value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
-                     <input type="number" placeholder="Preço" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
-                     <input type="number" placeholder="Estoque Inicial" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
-                     <input type="number" placeholder="Custo Un." value={formData.cost} onChange={e => setFormData({...formData, cost: e.target.value})} className="px-4 py-3 border rounded-xl font-bold" />
-                   
-                   <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Categoria Principal</label>
-                      <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="px-4 py-3 border rounded-xl font-bold bg-white text-secundaria">
-                         <option value="Porta Guardanapos">Porta Guardanapos</option>
-                         <option value="Guardanapos">Guardanapos</option>
-                         <option value="Jogos Americanos">Jogos Americanos</option>
-                         <option value="Insumos">Insumos / Suprimentos</option>
-                         <option value="Diversos">Diversos</option>
-                      </select>
+         <div className="fixed inset-0 bg-secundaria/80 backdrop-blur z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-y-auto border border-white/20">
+                <div className="bg-gray-50 px-8 py-6 border-b border-gray-100 flex justify-between items-center sticky top-0 z-10">
+                   <div>
+                      <h3 className="text-2xl font-serif font-bold text-secundaria">
+                         {formData.is_insumo ? 'Novo Insumo / Matéria-Prima' : 'Nova Peça Artesanal'}
+                      </h3>
+                      <p className="text-[10px] text-primaria font-bold uppercase tracking-widest mt-1">
+                         {formData.is_insumo ? 'Cadastro Técnico de Suprimentos' : `${formData.category} • ${formData.colecao}`}
+                      </p>
                    </div>
+                   <button onClick={() => setIsProductModalOpen(false)} className="text-gray-400 hover:text-red-500 font-bold text-[10px] uppercase">
+                      Fechar [X]
+                   </button>
+                </div>
 
-                   <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Linha / Coleção</label>
-                      <select value={formData.colecao} onChange={e => setFormData({...formData, colecao: e.target.value})} className="px-4 py-3 border rounded-xl font-bold bg-white text-secundaria">
-                         <option value="Sem linha / Coleção">Sem linha / Coleção</option>
-                         <option value="Flores">Flores</option>
-                         <option value="Frutas e legumes">Frutas e Legumes</option>
-                         <option value="Provence">Provence</option>
-                         <option value="Páscoa">Páscoa</option>
-                         <option value="Círio">Círio</option>
-                         <option value="Natal">Natal</option>
-                         <option value="Verão">Verão</option>
-                         <option value="Diversos">Diversos</option>
-                      </select>
-                   </div>
-                  </div>
-                  <button type="submit" disabled={isSavingProduct} className="w-full bg-primaria text-white py-5 rounded-xl font-bold uppercase tracking-widest">
-                     {isSavingProduct ? "Sincronizando..." : "Gravar no Catálogo Pro"}
+                {/* TAB NAVIGATION */}
+                <div className="flex border-b border-gray-100 bg-white">
+                  <button type="button" onClick={() => setProductTab('geral')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-[2px] transition-all ${productTab === 'geral' ? 'text-primaria border-b-2 border-primaria bg-primaria/5' : 'text-gray-400 hover:text-secundaria'}`}>📄 Dados Gerais</button>
+                  <button type="button" onClick={() => setProductTab('insumos')} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-[2px] transition-all ${productTab === 'insumos' ? 'text-primaria border-b-2 border-primaria bg-primaria/5' : 'text-gray-400 hover:text-secundaria'}`}>🧵 Ficha Técnica (Insumos)</button>
+                </div>
+
+               <form onSubmit={handleCreateProduct} className="p-8 space-y-6">
+                  {productTab === 'geral' ? (
+                    <div className="space-y-6">
+                       {/* Toggle: Produto Artesanal vs Insumo */}
+                       <div className="flex gap-4">
+                         <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${!formData.is_insumo ? 'bg-primaria/10 border-primaria text-primaria' : 'bg-gray-50 border-transparent text-gray-400'}`}>
+                           <input type="radio" className="hidden" checked={!formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: false, category: formData.category === 'Insumos' ? 'Diversos' : formData.category })} />
+                           🎨 Produto Artesanal
+                         </label>
+                         <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${formData.is_insumo ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>
+                           <input type="radio" className="hidden" checked={formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: true, category: 'Insumos' })} />
+                           🧵 Insumo / Matéria-Prima
+                         </label>
+                       </div>
+
+                       <input type="file" multiple onChange={handleFileChange} className="w-full border-dashed border-2 p-6 rounded-xl text-center cursor-pointer text-xs font-bold text-gray-400" />
+                       
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="col-span-2">
+                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Nome do Item</label>
+                             <input type="text" placeholder="Ex: Porta Guardanapo Orquídea Luxo" value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} className="w-full px-4 py-3 border rounded-xl font-bold mt-1" />
+                          </div>
+                          <div>
+                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Preço de Venda</label>
+                             <input type="number" placeholder="R$ 0,00" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full px-4 py-3 border rounded-xl font-bold mt-1" />
+                          </div>
+                          <div>
+                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Estoque Inicial</label>
+                             <input type="number" placeholder="0" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} className="w-full px-4 py-3 border rounded-xl font-bold mt-1" />
+                          </div>
+                       </div>
+
+                       <div className="grid grid-cols-2 gap-4">
+                          <label className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.show_on_site ? 'border-primaria/30 bg-primaria/5' : 'border-gray-100 bg-gray-50'}`}>
+                             <input type="checkbox" checked={formData.show_on_site} onChange={e => setFormData({...formData, show_on_site: e.target.checked})} className="w-5 h-5 accent-primaria" />
+                             <span className="text-[10px] font-bold uppercase text-secundaria">Mostrar no Site</span>
+                          </label>
+                          <label className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all cursor-pointer ${formData.is_preorder ? 'border-amber-300 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}>
+                             <input type="checkbox" checked={formData.is_preorder} onChange={e => setFormData({...formData, is_preorder: e.target.checked})} className="w-5 h-5 accent-amber-600" />
+                             <span className="text-[10px] font-bold uppercase text-secundaria">Sob Encomenda</span>
+                          </label>
+                       </div>
+                       
+                       {!formData.is_insumo && (
+                         <div className="grid grid-cols-2 gap-4">
+                           <div className="flex flex-col gap-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Categoria</label>
+                              <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="px-4 py-3 border rounded-xl font-bold bg-white text-secundaria">
+                                 <option value="Porta Guardanapos">Porta Guardanapos</option>
+                                 <option value="Guardanapos">Guardanapos</option>
+                                 <option value="Jogos Americanos">Jogos Americanos</option>
+                                 <option value="Diversos">Diversos</option>
+                              </select>
+                           </div>
+                           <div className="flex flex-col gap-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Coleção</label>
+                              <select value={formData.colecao} onChange={e => setFormData({...formData, colecao: e.target.value})} className="px-4 py-3 border rounded-xl font-bold bg-white text-secundaria">
+                                 <option value="Sem linha / Coleção">Sem linha</option>
+                                 <option value="Flores">Flores</option>
+                                 <option value="Frutas e legumes">Frutas e Legumes</option>
+                                 <option value="Provence">Provence</option>
+                                 <option value="Páscoa">Páscoa</option>
+                                 <option value="Círio">Círio</option>
+                                 <option value="Natal">Natal</option>
+                              </select>
+                           </div>
+                         </div>
+                       )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                       <div className="flex justify-between items-center mb-2">
+                          <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400">Materiais & Insumos</h4>
+                          <button type="button" onClick={() => setFormData({ ...formData, insumos_json: [...(formData.insumos_json || []), { id: Date.now(), nome: '', qtd: '', unidade: 'm' }] })} className="text-[10px] font-bold text-primaria">+ Adicionar Item</button>
+                       </div>
+                       <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                          {(formData.insumos_json || []).map((item, idx) => (
+                             <div key={item.id} className="grid grid-cols-12 gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                <input type="text" placeholder="Nome do insumo" value={item.nome} onChange={e => {
+                                   const newInsumos = [...formData.insumos_json];
+                                   newInsumos[idx].nome = e.target.value;
+                                   setFormData({...formData, insumos_json: newInsumos});
+                                }} className="col-span-6 px-3 py-2 text-xs border rounded-lg font-bold" />
+                                <input type="text" placeholder="Qtd" value={item.qtd} onChange={e => {
+                                   const newInsumos = [...formData.insumos_json];
+                                   newInsumos[idx].qtd = e.target.value;
+                                   setFormData({...formData, insumos_json: newInsumos});
+                                }} className="col-span-3 px-3 py-2 text-xs border rounded-lg font-bold text-center" />
+                                <select value={item.unidade} onChange={e => {
+                                   const newInsumos = [...formData.insumos_json];
+                                   newInsumos[idx].unidade = e.target.value;
+                                   setFormData({...formData, insumos_json: newInsumos});
+                                }} className="col-span-2 px-1 py-2 text-[10px] border rounded-lg font-bold">
+                                   <option value="un">un</option>
+                                   <option value="m">m</option>
+                                   <option value="cm">cm</option>
+                                   <option value="g">g</option>
+                                </select>
+                                <button type="button" onClick={() => setFormData({ ...formData, insumos_json: formData.insumos_json.filter(i => i.id !== item.id) })} className="col-span-1 text-red-400 font-bold hover:text-red-600">×</button>
+                             </div>
+                          ))}
+                          {(formData.insumos_json || []).length === 0 && <p className="text-center py-6 text-[10px] text-gray-400 font-bold uppercase tracking-widest border-2 border-dashed rounded-2xl">Nenhum detalhe técnico adicionado</p>}
+                       </div>
+                    </div>
+                  )}
+
+                  <button type="submit" disabled={isSavingProduct} className="w-full bg-secundaria text-white py-5 rounded-2xl font-bold uppercase tracking-[3px] text-sm shadow-xl hover:bg-black transition-all">
+                     {isSavingProduct ? "Sincronizando..." : "Confirmar Cadastro no Catálogo"}
                   </button>
                </form>
-           </div>
-        </div>
-      )}
+            </div>
+          </div>
+       )}
 
     </div>
   );
