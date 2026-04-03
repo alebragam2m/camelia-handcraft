@@ -1,7 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { productService } from '../services/supabaseService';
 
 function Home() {
+  const [collections, setCollections] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCols = async () => {
+      try {
+        const data = await productService.getUniqueCollections();
+        // Filtra "Sem linha / Coleção" para não poluir a Home se desejar, 
+        // ou mantém tudo que for dinâmico.
+        setCollections(data.filter(c => c.nome !== 'Sem linha / Coleção'));
+      } catch (err) {
+        console.error('Erro ao buscar coleções:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCols();
+  }, []);
+
   return (
     <div className="bg-fundo min-h-screen">
       
@@ -27,30 +47,37 @@ function Home() {
         </div>
       </section>
 
-      {/* Coleções Temáticas - Grid com Cards 30% menores (aspecto paisagem) */}
-      <section className="py-24 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Dinamismo Total: Exibição das Coleções Reais do Banco */}
+      <section className="py-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <p className="text-xs tracking-[4px] uppercase text-gray-400 mb-3 font-medium">Nossas Coleções</p>
-          <h2 className="text-4xl font-serif font-bold text-secundaria mb-4">Coleções Temáticas</h2>
+          {/* Título Removido conforme solicitado */}
         </div>
 
-        {/* Note the explicit smaller height: h-[220px] instead of extreme portrait cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            { nome: 'Flores', img: 'https://images.unsplash.com/photo-1528698827591-e19ccd7bc23d?auto=format&fit=crop&w=500&q=80' },
-            { nome: 'Frutas e Legumes', img: 'https://images.unsplash.com/photo-1579227114347-15d08fc37cae?auto=format&fit=crop&w=500&q=80' },
-            { nome: 'Provence', img: 'https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=500&q=80' },
-            { nome: 'Diversos', img: 'https://images.unsplash.com/photo-1512341689857-198e7e2f3ca8?auto=format&fit=crop&w=500&q=80' },
-          ].map((col, i) => (
-            <Link to={`/produtos?col=${encodeURIComponent(col.nome)}`} key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition duration-500 hover:-translate-y-2">
-              <img src={col.img} alt={col.nome} className="w-full h-full object-cover transition duration-700 group-hover:scale-110" />
-              <div className="absolute inset-0 bg-secundaria/50 group-hover:bg-secundaria/30 transition duration-500"></div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                <h3 className="text-branco text-2xl font-serif font-bold text-center tracking-wide">{col.nome}</h3>
-              </div>
-            </Link>
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-pulse">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-[220px] bg-gray-100 rounded-2xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {collections.map((col, i) => (
+              <Link to={`/produtos?col=${encodeURIComponent(col.nome)}`} key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition duration-500 hover:-translate-y-2 translate-z-0">
+                <img 
+                  src={col.img || '/logo.png'} 
+                  alt={col.nome} 
+                  className="w-full h-full object-cover transition duration-700 group-hover:scale-110" 
+                  onError={(e) => { e.target.src = '/logo.png'; }}
+                />
+                <div className="absolute inset-0 bg-secundaria/50 group-hover:bg-secundaria/30 transition duration-500"></div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+                  <h3 className="text-branco text-xl md:text-2xl font-serif font-bold text-center tracking-wide">{col.nome}</h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Nossa História - Seção Sobre Inteira Clonada do Manus */}

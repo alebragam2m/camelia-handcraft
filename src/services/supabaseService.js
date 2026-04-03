@@ -44,6 +44,8 @@ export const productService = {
       colecao: p.colecao || 'Sem linha / Coleção',
       description: p.description || '',
       image_url: p.image_url || '',
+      image_2: p.image_2 || '',
+      image_3: p.image_3 || '',
       show_on_site: p.show_on_site !== undefined ? p.show_on_site : true,
       is_preorder: p.is_preorder || false,
       is_insumo: p.is_insumo || false,
@@ -54,6 +56,27 @@ export const productService = {
       supplier_id: p.supplier_id || null,
       created_at: p.created_at,
     };
+  },
+
+  /** Extrai coleções únicas que possuem produtos ativos no site */
+  async getUniqueCollections() {
+    const { data, error } = await supabase
+      .from('products')
+      .select('colecao, image_url')
+      .eq('show_on_site', true)
+      .not('colecao', 'is', null);
+    
+    if (error) throw error;
+
+    // Redução para garantir uma imagem por coleção única
+    const unique = data.reduce((acc, current) => {
+      if (!acc[current.colecao]) {
+        acc[current.colecao] = current.image_url;
+      }
+      return acc;
+    }, {});
+
+    return Object.entries(unique).map(([nome, img]) => ({ nome, img }));
   },
 
   /** Cria ou atualiza um produto. id = null → INSERT, id = number → UPDATE */
