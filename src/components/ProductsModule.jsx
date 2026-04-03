@@ -27,7 +27,7 @@ const defaultForm = {
   colecao: 'Sem linha / Coleção', stock: '0', description: '',
   is_insumo: false, show_on_site: true, is_preorder: false,
   insumos_json: [], 
-  supplier_id: '', measure_cm: '', weight_kg: ''
+  supplier_id: '', measure_cm: '', weight_kg: '', technical_notes: ''
 };
 
 export default function ProductsModule() {
@@ -66,6 +66,7 @@ export default function ProductsModule() {
       supplier_id: prod.supplier_id || '',
       measure_cm: prod.measure_cm || '',
       weight_kg: prod.weight_kg || '',
+      technical_notes: prod.technical_notes || '',
     });
     setSelectedFiles([]);
     setEditProduct(prod);
@@ -112,6 +113,7 @@ export default function ProductsModule() {
         ...(formData.supplier_id && { supplier_id: formData.supplier_id }),
         ...(formData.measure_cm && { measure_cm: formData.measure_cm }),
         ...(formData.weight_kg && { weight_kg: formData.weight_kg }),
+        ...(formData.technical_notes && { technical_notes: formData.technical_notes }),
       };
 
       const saved = await productService.save(payload, editProduct?.id || null);
@@ -219,17 +221,7 @@ export default function ProductsModule() {
             <form onSubmit={handleSave} className="p-8 space-y-5">
               {activeTab === 'geral' && (
                 <div className="space-y-6 animate-fade-in">
-                  {/* Toggle: Produto Artesanal vs Insumo */}
-                  <div className="flex gap-4">
-                    <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${!formData.is_insumo ? 'bg-primaria/10 border-primaria text-primaria' : 'bg-gray-50 border-transparent text-gray-400'}`}>
-                      <input type="radio" className="hidden" checked={!formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: false, category: formData.category === 'Insumos' ? 'Diversos' : formData.category })} />
-                      🎨 Produto Artesanal
-                    </label>
-                    <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${formData.is_insumo ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>
-                      <input type="radio" className="hidden" checked={formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: true, category: 'Insumos' })} />
-                      🧵 Insumo / Matéria-Prima
-                    </label>
-                  </div>
+                  {/* Toggle: Produto Artesanal vs Insumo (Removido a pedido do usuário) */}
 
                   {/* NOVAS FLAGS DE VISIBILIDADE E ENCOMENDA */}
                   <div className="grid grid-cols-2 gap-4">
@@ -406,6 +398,17 @@ export default function ProductsModule() {
                       ))}
                     </div>
                   )}
+                  
+                  <div className="mt-8 border-t border-gray-100 pt-6">
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Observações Técnicas / Modo de Fazer</label>
+                    <textarea 
+                      rows={5} 
+                      value={formData.technical_notes || ''} 
+                      onChange={e => setFormData({ ...formData, technical_notes: e.target.value })}
+                      placeholder="Espaço ilimitado para anotações, detalhes de costura, referências ou observações da peça..." 
+                      className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm text-secundaria outline-none resize-y" 
+                    />
+                  </div>
                 </div>
               )}
 

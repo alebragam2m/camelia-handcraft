@@ -84,6 +84,7 @@ function AdminDashboard() {
     show_on_site: true,
     is_preorder: false,
     insumos_json: [],
+    technical_notes: '',
   };
   const [formData, setFormData] = useState(defaultProductForm);
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -166,6 +167,7 @@ function AdminDashboard() {
         show_on_site: formData.show_on_site,
         is_preorder: formData.is_preorder,
         insumos_json: formData.insumos_json || [],
+        technical_notes: formData.technical_notes,
       });
 
       // 2. Upload de foto vinculado ao ID (se houver)
@@ -643,17 +645,7 @@ function AdminDashboard() {
                <form onSubmit={handleCreateProduct} className="p-8 space-y-6">
                   {productTab === 'geral' ? (
                     <div className="space-y-6">
-                       {/* Toggle: Produto Artesanal vs Insumo */}
-                       <div className="flex gap-4">
-                         <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${!formData.is_insumo ? 'bg-primaria/10 border-primaria text-primaria' : 'bg-gray-50 border-transparent text-gray-400'}`}>
-                           <input type="radio" className="hidden" checked={!formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: false, category: formData.category === 'Insumos' ? 'Diversos' : formData.category })} />
-                           🎨 Produto Artesanal
-                         </label>
-                         <label className={`flex-1 text-center py-3 rounded-xl border-2 font-bold uppercase tracking-widest text-xs cursor-pointer transition-colors ${formData.is_insumo ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>
-                           <input type="radio" className="hidden" checked={formData.is_insumo} onChange={() => setFormData({ ...formData, is_insumo: true, category: 'Insumos' })} />
-                           🧵 Insumo / Matéria-Prima
-                         </label>
-                       </div>
+                       {/* Toggle: Produto Artesanal vs Insumo (Removido a pedido do usuário) */}
 
                        <input type="file" multiple onChange={handleFileChange} className="w-full border-dashed border-2 p-6 rounded-xl text-center cursor-pointer text-xs font-bold text-gray-400" />
                        
@@ -742,6 +734,17 @@ function AdminDashboard() {
                              </div>
                           ))}
                           {(formData.insumos_json || []).length === 0 && <p className="text-center py-6 text-[10px] text-gray-400 font-bold uppercase tracking-widest border-2 border-dashed rounded-2xl">Nenhum detalhe técnico adicionado</p>}
+                       </div>
+                       
+                       <div className="mt-6 border-t border-gray-100 pt-6">
+                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Observações Técnicas / Modo de Fazer</label>
+                         <textarea 
+                           rows={5} 
+                           value={formData.technical_notes || ''} 
+                           onChange={e => setFormData({ ...formData, technical_notes: e.target.value })}
+                           placeholder="Espaço ilimitado para anotações, detalhes de costura, referências ou observações da peça..." 
+                           className="w-full p-4 bg-gray-50 rounded-xl border border-gray-200 text-sm text-secundaria outline-none resize-y" 
+                         />
                        </div>
                     </div>
                   )}
