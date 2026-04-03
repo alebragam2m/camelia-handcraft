@@ -113,11 +113,22 @@ function ProductDetail() {
                         >+</button>
                       </div>
                       
-                      <button 
-                        onClick={handleAddToCart}
-                        className={`flex-1 font-bold py-4 rounded-xl shadow-xl transition-all uppercase tracking-[3px] text-[11px] active:scale-95 ${product.is_preorder || product.stock <= 0 ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-900/10' : 'bg-secundaria text-white shadow-secundaria/10 hover:bg-black'}`}>
-                        {product.is_preorder || product.stock <= 0 ? 'Encomendar agora' : 'Adicionar ao Carrinho'}
-                      </button>
+                      {product.is_preorder ? (
+                        <a 
+                          href={`https://wa.me/5591991145232?text=Olá, gostaria de encomendar o produto ${encodeURIComponent(product.nome)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex-1 font-bold py-4 rounded-xl shadow-xl transition-all uppercase tracking-[3px] text-[11px] active:scale-95 bg-amber-600 hover:bg-amber-700 text-white shadow-amber-900/10 text-center"
+                        >
+                          Encomendar agora
+                        </a>
+                      ) : (
+                        <button 
+                          onClick={handleAddToCart}
+                          className={`flex-1 font-bold py-4 rounded-xl shadow-xl transition-all uppercase tracking-[3px] text-[11px] active:scale-95 ${product.stock <= 0 ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-900/10' : 'bg-secundaria text-white shadow-secundaria/10 hover:bg-black'}`}>
+                          {product.stock <= 0 ? 'Encomendar agora' : 'Adicionar ao Carrinho'}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 text-center">

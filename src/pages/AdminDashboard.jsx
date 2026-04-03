@@ -25,7 +25,16 @@ function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState('visao_geral');
   const [userRole, setUserRole] = useState('Vendedor');
-  const isAdmin = userRole === 'Admin';
+  const [userLevel, setUserLevel] = useState(1); // 1: Vendedor, 2: Gestor, 3: Admin
+  const isAdmin = userLevel >= 3; 
+
+  const ROLE_MAP = {
+    'Admin': 3,
+    'admin': 3,
+    'Proprietário': 3,
+    'Gestor': 2,
+    'Vendedor': 1
+  };
   
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
@@ -38,9 +47,28 @@ function AdminDashboard() {
   const detectUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { navigate('/login'); return; }
-    const { data } = await supabase.from('admin_users').select('role').eq('auth_user_id', user.id).single();
-    if (!data) { navigate('/'); return; }
-    setUserRole(data.role);
+    
+    try {
+      const { data, error: roleError } = await supabase
+        .from('admin_users')
+        .select('role')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (roleError) throw roleError;
+
+      if (data) {
+        setUserRole(data.role);
+        setUserLevel(ROLE_MAP[data.role] || 1);
+      } else {
+        // Se o usuário não está mapeado no admin_users, mantemos nível básico
+        // em vez de redirecionar agressivamente para o site público.
+        console.warn('[Dashboard] Usuário logado mas sem perfil mapeado em admin_users.');
+        setUserLevel(1); 
+      }
+    } catch (err) {
+      console.error('[Dashboard] Erro ao detectar cargo:', err.message);
+    }
   };
 
   const [clientForm, setClientForm] = useState({
@@ -116,7 +144,7 @@ function AdminDashboard() {
        const firstRealProduct = produtos.find(p => !p.is_insumo);
        if (firstRealProduct) setSelectedProductId(firstRealProduct.id);
     }
-  }, [clientes, produtos]);
+  }, [clientes, produtos, selectedProductId]);
 
   useEffect(() => { 
     detectUserRole(); 
@@ -359,8 +387,8 @@ function AdminDashboard() {
                 <div className="mt-2 bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 flex items-center gap-3 animate-pulse">
                    <span className="text-xl">⚠️</span>
                    <div className="flex flex-col">
-                      <p className="text-[10px] font-bold uppercase tracking-widest">Erro Crítico de Sincronização SWR (Motor Pro v2)</p>
-                      <p className="text-[9px] font-bold opacity-80">Mensagem: {error?.message || 'Falha Desconhecida no Supabase'}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest">Estado de Alerta (Motor Pro v2)</p>
+                      <p className="text-[9px] font-bold opacity-80">Motivo: {error?.message || 'Sincronização Lenta'}</p>
                    </div>
                 </div>
               )}

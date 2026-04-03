@@ -20,6 +20,8 @@ export function DataProvider({ children }) {
   const [suppliers, setSuppliers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isError, setIsError] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // ── Monitor de conexão ──────────────────────────────────────────────────────
@@ -31,24 +33,47 @@ export function DataProvider({ children }) {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // ── Carga inicial ───────────────────────────────────────────────────────────
+  // ── Carga inicial com Circuit Breaker (Timeout + AbortController) ───────────
   const loadAll = useCallback(async () => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     setLoading(true);
+    setIsError(false);
+    setError(null);
+
+    // Promessa com timeout de 5 segundos
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => {
+        controller.abort(); // CANCELA as requisições no Supabase
+        reject(new Error('Tempo de resposta do servidor excedido (Motor Pro v2 Timeout)'));
+      }, 5000)
+    );
+
     try {
-      const [p, s, c, sup, t] = await Promise.all([
-        productService.getAll(),
-        saleService.getAll(),
-        clientService.getAll(),
-        supplierService.getAll(),
-        transactionService.getAll(),
+      const fetchPromise = Promise.all([
+        productService.getAll(signal),
+        saleService.getAll(signal),
+        clientService.getAll(signal),
+        supplierService.getAll(signal),
+        transactionService.getAll(signal),
       ]);
+
+      // Vence quem chegar primeiro: os dados ou o erro/abort de 5s
+      const [p, s, c, sup, t] = await Promise.race([fetchPromise, timeout]);
+      
       setProducts(p);
       setSales(s);
       setClients(c);
       setSuppliers(sup);
       setTransactions(t);
     } catch (err) {
-      console.error('[DataContext] Erro ao carregar dados:', err.message);
+      if (err.name === 'AbortError') {
+        console.warn('[DataContext] Requisições canceladas por timeout.');
+      }
+      console.error('[DataContext] Erro Crítico:', err.message);
+      setIsError(true);
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -56,11 +81,20 @@ export function DataProvider({ children }) {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // ── Realtime: produtos ──────────────────────────────────────────────────────
+  // ── Realtime: State Push (Sem novas requisições HTTP) ────────────────────
   useEffect(() => {
-    const unsubscribe = productService.subscribe(async () => {
-      const updated = await productService.getAll();
-      setProducts(updated);
+    const unsubscribe = productService.subscribe((payload) => {
+      const { eventType, new: newItem, old: oldItem } = payload;
+      
+      if (eventType === 'INSERT') {
+        setProducts(prev => [newItem, ...prev]);
+      } 
+      else if (eventType === 'UPDATE') {
+        setProducts(prev => prev.map(p => p.id === newItem.id ? newItem : p));
+      } 
+      else if (eventType === 'DELETE') {
+        setProducts(prev => prev.filter(p => p.id !== oldItem.id));
+      }
     });
     return unsubscribe;
   }, []);
@@ -126,7 +160,7 @@ export function DataProvider({ children }) {
 
   return (
     <DataContext.Provider value={{
-      isOnline, loading,
+      isOnline, loading, isError, error,
       products, sales, clients, suppliers, transactions,
       actions,
     }}>

@@ -42,18 +42,34 @@ function ProductsPage() {
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
-  // ── Realtime: atualiza a vitrine automaticamente quando o Admin salva ───────
+  // ── Sincronização em Tempo Real (State Push) ──────────────────────────────
   useEffect(() => {
-    const unsubscribe = productService.subscribe(loadProducts);
+    const unsubscribe = productService.subscribe((payload) => {
+      const { eventType, new: newItem, old: oldItem } = payload;
+      
+      if (eventType === 'INSERT') {
+        setProducts(prev => [newItem, ...prev]);
+      } 
+      else if (eventType === 'UPDATE') {
+        setProducts(prev => prev.map(p => p.id === newItem.id ? newItem : p));
+      } 
+      else if (eventType === 'DELETE') {
+        setProducts(prev => prev.filter(p => p.id !== oldItem.id));
+      }
+    });
     return unsubscribe;
-  }, [loadProducts]);
+  }, []);
 
   // ── Filtragem ───────────────────────────────────────────────────────────────
   const displayed = products
     .filter(p => p.show_on_site !== false && !p.is_insumo)
     .filter(p => activeCategory === 'Todos' || p.category === activeCategory)
-    .filter(p => !activeCollection || p.colecao === activeCollection)
-    .filter(p => !searchQuery || (p.nome && p.nome.toLowerCase().includes(searchQuery)));
+    .filter(p => {
+      if (!activeCollection) return true;
+      if (!p.colecao) return false;
+      return p.colecao.trim().toLowerCase() === activeCollection.trim().toLowerCase();
+    })
+    .filter(p => !searchQuery || (p.nome && p.nome.toLowerCase().includes(searchQuery.toLowerCase())));
 
   const clearFilters = () => {
     setActiveCategory('Todos');
@@ -81,28 +97,7 @@ function ProductsPage() {
       {/* Filtros e Catálogo */}
       <section className="py-16 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
 
-        {/* Banner de Filtro Ativo */}
-        {hasFilter && (
-          <div className="bg-white border-2 border-primaria/20 rounded-3xl p-8 mb-12 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-6 text-left">
-              <div className="w-16 h-16 bg-primaria/10 rounded-2xl flex items-center justify-center text-3xl shadow-inner">
-                {activeCollection ? '✨' : searchQuery ? '🔍' : '📦'}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[4px] text-primaria mb-1">Catálogo Filtrado</p>
-                <h3 className="text-secundaria font-serif font-bold text-2xl md:text-3xl leading-tight">
-                  {searchQuery ? `Busca: "${searchQuery}"` : (activeCollection || activeCategory)}
-                </h3>
-                <p className="text-xs text-gray-400 font-medium mt-1">Exibindo items selecionados da curadoria Camélia.</p>
-              </div>
-            </div>
-            <button
-              onClick={clearFilters}
-              className="w-full md:w-auto bg-secundaria text-white px-8 py-4 rounded-xl text-[11px] font-bold uppercase tracking-[3px] hover:bg-black transition-all shadow-lg active:scale-95">
-              Ver Tudo ↺
-            </button>
-          </div>
-        )}
+        {/* Banner de Filtro Removido conforme solicitado */}
 
         {/* Pills de Categoria */}
         <div className="flex overflow-x-auto pb-4 gap-3 no-scrollbar scroll-smooth mb-12">
@@ -160,12 +155,23 @@ function ProductsPage() {
 
                   {/* Botão Compra Rápida (Desktop) */}
                   <div className="hidden md:block absolute inset-x-0 bottom-4 px-4 translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                    <button
-                      onClick={(e) => { e.preventDefault(); addToCart(prod); }}
-                      disabled={prod.stock <= 0 && !prod.is_preorder}
-                      className={`w-full py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg transition-transform active:scale-95 ${(prod.stock > 0 || prod.is_preorder) ? 'bg-white text-secundaria hover:bg-secundaria hover:text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
-                      {prod.stock > 0 ? 'Adicionar ao Carrinho' : prod.is_preorder ? 'Encomendar' : 'Esgotado'}
-                    </button>
+                    {prod.is_preorder ? (
+                      <a
+                        href={`https://wa.me/5591991145232?text=Olá, gostaria de encomendar o produto ${prod.nome}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block w-full py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg transition-transform active:scale-95 bg-amber-500 text-white hover:bg-amber-600 text-center"
+                      >
+                        Encomendar
+                      </a>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.preventDefault(); addToCart(prod); }}
+                        disabled={prod.stock <= 0}
+                        className={`w-full py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg transition-transform active:scale-95 ${prod.stock > 0 ? 'bg-white text-secundaria hover:bg-secundaria hover:text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}>
+                        {prod.stock > 0 ? 'Adicionar ao Carrinho' : 'Esgotado'}
+                      </button>
+                    )}
                   </div>
 
                   {/* Etiqueta de Status */}
