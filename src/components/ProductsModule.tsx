@@ -79,24 +79,12 @@ export default function ProductsModule() {
     <ErrorBoundary>
       <div className="animate-fade-in-down space-y-6 pb-12">
 
-        {/* MODAL BLINDADO (ProductForm) */}
+        {/* MODAL PADRÃO CAMÉLIA (ProductForm) */}
         {isCreating && (
-          <div className="fixed inset-0 bg-secundaria/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl max-h-[95vh] overflow-hidden">
-               <ProductForm 
-                product={editProduct || undefined} 
-                onClose={closeModal} 
-               />
-               {editProduct && (
-                 <button 
-                  onClick={() => { if(confirm('Excluir permanentemente?')) deleteMutation.mutate(editProduct.id); }}
-                  className="w-full mt-4 text-red-300 font-bold text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors"
-                 >
-                   Excluir Peça do Acervo
-                 </button>
-               )}
-            </div>
-          </div>
+          <ProductForm 
+            product={editProduct} 
+            onClose={closeModal} 
+          />
         )}
 
         {loadingProducts && !products.length && (

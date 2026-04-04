@@ -23,7 +23,16 @@ export const productService = {
       throw new Error(`Falha ao carregar catálogo: ${error.message}`);
     }
 
-    return data || [];
+    // Normalização de Dados Legados (Auditoria de Incongruência)
+    const normalizedData = (data || []).map(p => ({
+      ...p,
+      show_on_site: p.show_on_site ?? true, // Se nulo, assume que deve mostrar
+      is_insumo: p.is_insumo ?? false,
+      price: p.price || 0,
+      stock: p.stock || 0
+    }));
+
+    return normalizedData;
   },
 
   /**

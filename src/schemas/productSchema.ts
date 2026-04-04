@@ -33,4 +33,4 @@ export const productSchema = z.object({
   supplier_id: z.union([z.string().uuid('ID inválido'), z.literal('')]).nullable().optional(),
 });
 
-export type ProductFormData = z.infer<typeof productSchema>;
+export type ProductInput = z.infer<typeof productSchema>;

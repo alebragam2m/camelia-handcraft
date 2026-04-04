@@ -32,6 +32,7 @@ function ProductsPage() {
     setLoading(true);
     try {
       const data = await productService.getAll();
+      console.log('[ProductsPage] Produtos carregados:', data.length);
       setProducts(data);
     } catch (err) {
       console.error('[ProductsPage] Erro ao carregar produtos:', err.message);
@@ -45,7 +46,8 @@ function ProductsPage() {
 
   // ── Filtragem ───────────────────────────────────────────────────────────────
   const displayed = products
-    .filter(p => p.show_on_site !== false && !p.is_insumo)
+    // Removemos filtros restritivos temporariamente para auditoria
+    .filter(p => p.show_on_site !== false) 
     .filter(p => activeCategory === 'Todos' || p.category === activeCategory)
     .filter(p => {
       if (!activeCollection) return true;
