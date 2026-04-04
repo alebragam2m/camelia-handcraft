@@ -10,9 +10,8 @@ function Home() {
     const fetchCols = async () => {
       try {
         const data = await productService.getUniqueCollections();
-        // Filtra "Sem linha / Coleção" para não poluir a Home se desejar, 
-        // ou mantém tudo que for dinâmico.
-        setCollections(data.filter(c => c.nome !== 'Sem linha / Coleção'));
+        // Filtra coleções vazias ou genéricas
+        setCollections(data.filter(c => c !== 'Sem linha / Coleção' && c !== ''));
       } catch (err) {
         console.error('Erro ao buscar coleções:', err);
       } finally {
@@ -62,17 +61,16 @@ function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {collections.map((col, i) => (
-              <Link to={`/produtos?col=${encodeURIComponent(col.nome)}`} key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition duration-500 hover:-translate-y-2 translate-z-0">
+            {collections.map((colName, i) => (
+              <Link to={`/produtos?col=${encodeURIComponent(colName)}`} key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition duration-500 hover:-translate-y-2 translate-z-0">
                 <img 
-                  src={col.img || '/logo.png'} 
-                  alt={col.nome} 
-                  className="w-full h-full object-cover transition duration-700 group-hover:scale-110" 
-                  onError={(e) => { e.target.src = '/logo.png'; }}
+                   src="/logo.png" // Como é apenas o nome, usamos a logo ou uma imagem padrão
+                  alt={colName} 
+                  className="w-full h-full object-cover transition duration-700 group-hover:scale-110 opacity-50" 
                 />
                 <div className="absolute inset-0 bg-secundaria/50 group-hover:bg-secundaria/30 transition duration-500"></div>
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                  <h3 className="text-branco text-xl md:text-2xl font-serif font-bold text-center tracking-wide">{col.nome}</h3>
+                  <h3 className="text-branco text-xl md:text-2xl font-serif font-bold text-center tracking-wide">{colName}</h3>
                 </div>
               </Link>
             ))}

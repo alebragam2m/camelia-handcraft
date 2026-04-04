@@ -42,23 +42,6 @@ function ProductsPage() {
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
-  // ── Sincronização em Tempo Real (State Push) ──────────────────────────────
-  useEffect(() => {
-    const unsubscribe = productService.subscribe((payload) => {
-      const { eventType, new: newItem, old: oldItem } = payload;
-      
-      if (eventType === 'INSERT') {
-        setProducts(prev => [newItem, ...prev]);
-      } 
-      else if (eventType === 'UPDATE') {
-        setProducts(prev => prev.map(p => p.id === newItem.id ? newItem : p));
-      } 
-      else if (eventType === 'DELETE') {
-        setProducts(prev => prev.filter(p => p.id !== oldItem.id));
-      }
-    });
-    return unsubscribe;
-  }, []);
 
   // ── Filtragem ───────────────────────────────────────────────────────────────
   const displayed = products
