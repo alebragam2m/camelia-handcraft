@@ -15,6 +15,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   'Jogos Americanos': '🍽️',
   'Diversos': '✨',
   'Insumos': '🧵',
+  'Outros': '📦',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -67,11 +68,15 @@ export default function ProductsModule() {
     setIsCreating(true);
   };
 
-  // Group by category
-  const byCategory = PRODUCT_CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = products.filter(p => p.category === cat || (cat === 'Insumos' && p.is_insumo));
+  // Group by category with Fallback (Auditoria de Incongruência)
+  const byCategory = products.reduce((acc, p) => {
+    let cat = p.category || 'Diversos';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(p);
     return acc;
   }, {} as Record<string, Product[]>);
+
+  const categories = Object.keys(byCategory).sort();
 
   const productsInLine = activeLine ? byCategory[activeLine] || [] : [];
 
@@ -94,24 +99,22 @@ export default function ProductsModule() {
         )}
 
         {/* VISTA PRINCIPAL: CATEGORIAS */}
-        {!activeLine && !isCreating && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PRODUCT_CATEGORIES.map(cat => {
+            {categories.map(cat => {
               const count = byCategory[cat]?.length || 0;
               return (
-                <div key={cat} onClick={() => setActiveLine(cat)} className={`group relative rounded-3xl border-2 p-8 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all ${CATEGORY_COLORS[cat]}`}>
+                <div key={cat} onClick={() => setActiveLine(cat)} className={`group relative rounded-3xl border-2 p-8 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all ${CATEGORY_COLORS[cat] || 'border-gray-200 bg-white'}`}>
                   <div className="flex justify-between items-start mb-6">
-                    <span className="text-5xl">{CATEGORY_ICONS[cat]}</span>
+                    <span className="text-5xl">{CATEGORY_ICONS[cat] || '🎨'}</span>
                     <span className="bg-white/80 backdrop-blur text-secundaria font-bold text-[10px] px-3 py-1 rounded-full shadow-sm border border-white">{count} itens</span>
                   </div>
                   <h3 className="font-serif font-bold text-secundaria text-xl mb-1">{cat}</h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Clique para gerenciar a linha</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Gerenciar linha {cat}</p>
                   <button onClick={(e) => { e.stopPropagation(); openCreateMode(cat); }} className="mt-6 bg-white border border-gray-100 text-secundaria text-[9px] font-bold px-4 py-2 rounded-lg hover:bg-secundaria hover:text-white transition-colors">+ Adicionar</button>
                 </div>
               );
             })}
           </div>
-        )}
 
         {/* VISTA DRILL-DOWN: LISTA DE PRODUTOS */}
         {activeLine && !isCreating && (

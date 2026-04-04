@@ -13,6 +13,8 @@ import StockHistoryModule from '../components/StockHistoryModule';
 import SuppliersModule from '../components/SuppliersModule';
 import ProductsModule from '../components/ProductsModule';
 import UsersModule from '../components/UsersModule';
+import SalesModule from '../components/SalesModule';
+import ClientsModule from '../components/ClientsModule';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 /**
@@ -182,11 +184,8 @@ export default function AdminDashboard() {
               {activeTab === 'fornecedores' && <SuppliersModule />}
               {activeTab === 'usuarios' && canAccessFullAdmin && <UsersModule />}
               
-              {(activeTab === 'vendas' || activeTab === 'clientes') && (
-                <div className="bg-white p-12 rounded-3xl text-center border border-dashed border-gray-200">
-                  <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">Módulo em Sincronização (Motor Pro v3)</p>
-                </div>
-              )}
+              {activeTab === 'vendas' && <SalesModule />}
+              {activeTab === 'clientes' && <ClientsModule />}
             </div>
           </main>
         </div>
