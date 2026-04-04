@@ -1,7 +1,7 @@
 import { formatCurrency } from '../utils/formatCurrency';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import { useCart } from '../context/CartContext';
 
 function ProductDetail() {

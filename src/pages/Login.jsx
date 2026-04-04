@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -27,7 +27,7 @@ function Login() {
        const { data: { user } } = await supabase.auth.getUser();
        const { data: adminRecord } = await supabase
          .from('admin_users')
-         .select('role')
+         .select('access_level')
          .eq('auth_user_id', user.id)
          .single();
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { productService } from '../services/supabaseService';
+import { productService } from '../services/productService';
 import { formatCurrency } from '../utils/formatCurrency';
 
 const CATEGORIES = ['Todos', 'Guardanapos', 'Jogos Americanos', 'Porta Guardanapos', 'Diversos'];

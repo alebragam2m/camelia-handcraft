@@ -1,0 +1,67 @@
+import React, { useEffect, useState, ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+
+interface ProtectedRouteProps {
+  children: ReactNode;
+}
+
+/**
+ * MOTOR DE PROTEÇÃO (MISSION CRITICAL)
+ * 
+ * PILLAR 1: TypeScript Estrito
+ * PILLAR 4: Error Handling (Timeout de Sessão)
+ */
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    // Timeout de segurança: se o Supabase demorar mais de 8s, libera para erro/login
+    const timeoutId = setTimeout(() => {
+      console.warn("[Auth] Timeout na verificação de sessão — redirecionando.");
+      setLoading(false);
+    }, 8000);
+
+    const checkAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
+      } catch (err) {
+        console.error("[Auth] Erro crítico de sessão:", err);
+        setIsAuthenticated(false);
+      } finally {
+        clearTimeout(timeoutId);
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listener para mudanças de login/logout em tempo real
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      setLoading(false);
+    });
+
+    return () => {
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F8FC] gap-4">
+        <div className="w-10 h-10 border-4 border-primaria border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-primaria font-bold text-[10px] uppercase tracking-[0.3em] animate-pulse">Verificando Credenciais...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}

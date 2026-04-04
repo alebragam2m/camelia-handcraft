@@ -1,7 +1,7 @@
 import { formatCurrency } from '../utils/formatCurrency';
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();

@@ -3,7 +3,7 @@
  * Única fonte de verdade para todas as operações de banco de dados.
  * Admin e Site compartilham este mesmo módulo.
  */
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 
 // ─── PRODUTOS ─────────────────────────────────────────────────────────────────
 

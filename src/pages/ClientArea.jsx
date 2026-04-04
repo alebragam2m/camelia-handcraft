@@ -1,7 +1,7 @@
 import { formatCurrency } from '../utils/formatCurrency';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase';
+import { supabase } from '../lib/supabase';
 import './Auth.css';
 
 function ClientArea() {

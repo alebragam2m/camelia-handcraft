@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { productService } from '../services/supabaseService';
+import { productService } from '../services/productService';
 
 function Home() {
   const [collections, setCollections] = useState([]);
