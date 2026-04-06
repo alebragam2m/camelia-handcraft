@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productService } from '../services/productService';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -39,10 +39,19 @@ export default function ProductsModule() {
   const [isCreating, setIsCreating] = useState(false);
 
   // Pillar 2: TanStack Query - Fetching
-  const { data: products = [], isLoading: loadingProducts } = useQuery({
+  const { data: products = [], isLoading: loadingProducts, error: errorLoad } = useQuery({
     queryKey: ['products'],
     queryFn: () => productService.getAll(),
   });
+
+  useEffect(() => {
+    if (products.length > 0) {
+      console.info(`[ProductsModule] ${products.length} itens detectados no Admin.`);
+    }
+    if (errorLoad) {
+      console.error('[ProductsModule] Falha crítica de sincronização:', errorLoad);
+    }
+  }, [products.length, errorLoad]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => productService.remove(id),
@@ -99,7 +108,8 @@ export default function ProductsModule() {
         )}
 
         {/* VISTA PRINCIPAL: CATEGORIAS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {!activeLine && !isCreating && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {categories.map(cat => {
               const count = byCategory[cat]?.length || 0;
               return (
@@ -109,27 +119,43 @@ export default function ProductsModule() {
                     <span className="bg-white/80 backdrop-blur text-secundaria font-bold text-[10px] px-3 py-1 rounded-full shadow-sm border border-white">{count} itens</span>
                   </div>
                   <h3 className="font-serif font-bold text-secundaria text-xl mb-1">{cat}</h3>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Gerenciar linha {cat}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Linha: {cat}</p>
                   <button onClick={(e) => { e.stopPropagation(); openCreateMode(cat); }} className="mt-6 bg-white border border-gray-100 text-secundaria text-[9px] font-bold px-4 py-2 rounded-lg hover:bg-secundaria hover:text-white transition-colors">+ Adicionar</button>
                 </div>
               );
             })}
+
+            {/* Card de Segurança: Ver Tudo */}
+            <div onClick={() => setActiveLine('Ver Tudo')} className="group relative rounded-3xl border-2 p-8 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all border-indigo-200 bg-indigo-50/30">
+               <div className="flex justify-between items-start mb-6">
+                 <span className="text-5xl">🔍</span>
+                 <span className="bg-white/80 backdrop-blur text-indigo-600 font-bold text-[10px] px-3 py-1 rounded-full shadow-sm border border-white">Total: {products.length}</span>
+               </div>
+               <h3 className="font-serif font-bold text-indigo-900 text-xl mb-1">Ver Tudo</h3>
+               <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Lista linear de segurança</p>
+            </div>
           </div>
+        )}
 
         {/* VISTA DRILL-DOWN: LISTA DE PRODUTOS */}
-        {activeLine && !isCreating && (
+        {(activeLine || activeLine === 'Ver Tudo') && !isCreating && (
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <button onClick={() => setActiveLine(null)} className="text-gray-400 hover:text-secundaria font-bold text-xs uppercase tracking-widest transition-colors">← Voltar às Linhas</button>
               <div className="flex-1 border-b border-gray-100" />
-              <button onClick={() => openCreateMode(activeLine)} className="bg-secundaria text-white px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md">Adicionar em {activeLine}</button>
+              <button 
+                onClick={() => openCreateMode(activeLine === 'Ver Tudo' ? 'Diversos' : activeLine!)} 
+                className="bg-secundaria text-white px-5 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-md"
+              >
+                + Novo em {activeLine}
+              </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {productsInLine.map(prod => (
+              {(activeLine === 'Ver Tudo' ? products : productsInLine).map(prod => (
                 <div key={prod.id} onClick={() => openEditMode(prod)} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer group hover:shadow-lg transition-all">
                   <div className="w-full h-40 bg-gray-50 flex items-center justify-center text-4xl border-b overflow-hidden">
-                    {prod.image_url ? <img src={prod.image_url} alt={prod.nome} className="w-full h-full object-cover group-hover:scale-105 transition-all" /> : CATEGORY_ICONS[activeLine]}
+                    {prod.image_url ? <img src={prod.image_url} alt={prod.nome} className="w-full h-full object-cover group-hover:scale-105 transition-all" /> : CATEGORY_ICONS[activeLine || 'Diversos']}
                   </div>
                   <div className="p-4">
                     <h4 className="font-bold text-secundaria text-sm truncate">{prod.nome}</h4>

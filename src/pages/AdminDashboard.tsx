@@ -33,11 +33,14 @@ export default function AdminDashboard() {
   const [userLevel, setUserLevel] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // TanStack Query (Sincronização e Cache)
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
     queryFn: () => productService.getAll(),
   });
+
+  useEffect(() => {
+    console.info(`[AdminAudit] Dashboard renderizado. Produtos no Banco: ${products.length} | Nível: ${userLevel} | Aba: ${activeTab}`);
+  }, [products.length, userLevel, activeTab]);
 
   const { data: sales = [], isError: isErrorSales } = useQuery({
     queryKey: ['sales'],
@@ -134,6 +137,10 @@ export default function AdminDashboard() {
                   )
                 ))}
              </nav>
+              <div className="mt-auto pt-6 border-t border-white/5 text-center">
+                 <p className="text-[8px] text-indigo-400 font-bold uppercase tracking-[4px]">Motor Pro v3.4 - ATIVO</p>
+                 <p className="text-[7px] text-gray-500 mt-1 uppercase tracking-widest">{new Date().toLocaleDateString('pt-BR')}</p>
+              </div>
           </aside>
 
           <main className="flex-1 ml-0 md:ml-72 p-10 bg-[#F0F2F9] pb-32 min-h-[calc(100vh-64px)]">
