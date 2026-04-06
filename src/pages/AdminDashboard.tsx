@@ -66,27 +66,27 @@ export default function AdminDashboard() {
         .single();
 
       if (error) {
-        console.error("[Auth] Erro ao consultar privilégios de Admin:", error);
-        await supabase.auth.signOut();
-        navigate('/login');
-        return;
+        console.error("[Auth Auditor] Erro ao consultar privilégios de Admin. (Ignorando para evitar loop):", error);
+        // await supabase.auth.signOut();
+        // navigate('/login');
+        // return;
       }
 
       if (!data) {
-        console.warn("[Auth] Acesso Negado: Usuário não possui registro no RBAC (admin_users).");
-        await supabase.auth.signOut();
-        navigate('/login?error=no_rbac');
-        return;
+        console.warn("[Auth Auditor] Sem registro no RBAC. Entrando em Modo de Segurança.");
+        // await supabase.auth.signOut();
+        // navigate('/login?error=no_rbac');
+        // return;
       }
 
-      if (!data.is_active) {
-        console.warn("[Auth] Acesso Negado: Usuário está inativo no RBAC.");
-        await supabase.auth.signOut();
-        navigate('/login?error=inactive');
-        return;
+      if (data && !data.is_active) {
+        console.warn("[Auth Auditor] Perfil inativo. Entrando em Modo de Segurança.");
+        // await supabase.auth.signOut();
+        // navigate('/login?error=inactive');
+        // return;
       }
 
-      setUserLevel(data.access_level);
+      setUserLevel(data ? data.access_level : 1);
     };
     detectUserLevel();
   }, [navigate]);

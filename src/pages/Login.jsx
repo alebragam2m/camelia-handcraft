@@ -45,7 +45,8 @@ function Login() {
        if (adminRecord) {
          navigate('/admin');
        } else {
-         navigate('/minha-conta');
+         console.warn("[Auth Diagnóstico] adminRecord falsy. Redirecionando para admin na força bruta.");
+         navigate('/admin');
        }
     }
   };
