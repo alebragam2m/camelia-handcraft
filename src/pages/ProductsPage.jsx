@@ -44,16 +44,10 @@ function ProductsPage() {
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
 
-  // ── Filtragem ───────────────────────────────────────────────────────────────
+  // ── Filtragem Absoluta ───────────────────────────────────────────────────────────────
   const displayed = products
-    // Removemos filtros restritivos temporariamente para auditoria
-    .filter(p => p.show_on_site !== false) 
+    // Exibição irrestrita (Blindagem v3.5)
     .filter(p => activeCategory === 'Todos' || p.category === activeCategory)
-    .filter(p => {
-      if (!activeCollection) return true;
-      if (!p.colecao) return false;
-      return p.colecao.trim().toLowerCase() === activeCollection.trim().toLowerCase();
-    })
     .filter(p => !searchQuery || (p.nome && p.nome.toLowerCase().includes(searchQuery.toLowerCase())));
 
   const clearFilters = () => {

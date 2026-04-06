@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 function Login() {
@@ -8,6 +8,17 @@ function Login() {
   const [errorInput, setErrorInput] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const errCode = params.get('error');
+    if (errCode === 'no_rbac') {
+      setErrorInput('Acesso Negado: Perfil não possui permissões administrativas.');
+    } else if (errCode === 'inactive') {
+      setErrorInput('Acesso Negado: Seu perfil administrativo está inativo.');
+    }
+  }, [location.search]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

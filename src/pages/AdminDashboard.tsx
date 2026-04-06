@@ -65,10 +65,24 @@ export default function AdminDashboard() {
         .eq('auth_user_id', user.id)
         .single();
 
-      if (error || !data || !data.is_active) {
-        console.warn("[Auth] Usuário não autorizado ou inativo.");
+      if (error) {
+        console.error("[Auth] Erro ao consultar privilégios de Admin:", error);
         await supabase.auth.signOut();
         navigate('/login');
+        return;
+      }
+
+      if (!data) {
+        console.warn("[Auth] Acesso Negado: Usuário não possui registro no RBAC (admin_users).");
+        await supabase.auth.signOut();
+        navigate('/login?error=no_rbac');
+        return;
+      }
+
+      if (!data.is_active) {
+        console.warn("[Auth] Acesso Negado: Usuário está inativo no RBAC.");
+        await supabase.auth.signOut();
+        navigate('/login?error=inactive');
         return;
       }
 
