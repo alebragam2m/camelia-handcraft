@@ -18,21 +18,28 @@ export const productService = {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[productService.getAll] Erro Crítico:', error.message);
-      throw new Error(`Falha ao carregar catálogo: ${error.message}`);
-    }
+    if (error) throw error;
 
-    // Normalização de Dados Legados (Auditoria de Incongruência)
-    const normalizedData = (data || []).map(p => ({
+    return (data || []).map(p => ({
       ...p,
-      show_on_site: p.show_on_site ?? true, // Se nulo, assume que deve mostrar
-      is_insumo: p.is_insumo ?? false,
-      price: p.price || 0,
-      stock: p.stock || 0
+      price: p.price ?? 0,
+      stock: p.stock ?? 0,
+      show_on_site: p.show_on_site ?? true,
     }));
+  },
 
-    return normalizedData;
+  // Canal Realtime — usado no useEffect do ProductsPage
+  subscribeToChanges(callback: () => void) {
+    const channel = supabase
+      .channel('products-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => callback()
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   },
 
   /**
