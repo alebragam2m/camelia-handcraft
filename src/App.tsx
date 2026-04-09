@@ -21,6 +21,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import ClientArea from './pages/ClientArea';
 import PaymentSuccess from './pages/PaymentSuccess';
+import FavoritosPage from './pages/FavoritosPage';
 
 // Contexts
 import { CartProvider } from './context/CartContext';
@@ -86,6 +87,13 @@ function AppContent() {
             <ProtectedRoute>
               <Navbar />
               <ClientArea />
+              <Footer />
+            </ProtectedRoute>
+          } />
+          <Route path="/minha-conta/favoritos" element={
+            <ProtectedRoute>
+              <Navbar />
+              <FavoritosPage />
               <Footer />
             </ProtectedRoute>
           } />
