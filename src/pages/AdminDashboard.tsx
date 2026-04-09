@@ -30,7 +30,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('visao_geral');
-  const [userLevel, setUserLevel] = useState(1);
+  const [userLevel, setUserLevel] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { data: products = [] } = useQuery({
@@ -66,30 +66,40 @@ export default function AdminDashboard() {
         .single();
 
       if (error) {
-        console.error("[Auth Auditor] Erro ao consultar privilégios de Admin. (Ignorando para evitar loop):", error);
-        // await supabase.auth.signOut();
-        // navigate('/login');
-        // return;
+        console.error("[Auth Auditor] Erro ao consultar privilégios de Admin:", error);
+        await supabase.auth.signOut();
+        navigate('/login');
+        return;
       }
 
       if (!data) {
-        console.warn("[Auth Auditor] Sem registro no RBAC. Entrando em Modo de Segurança.");
-        // await supabase.auth.signOut();
-        // navigate('/login?error=no_rbac');
-        // return;
+        console.warn("[Auth Auditor] Sem registro no RBAC. Acesso negado.");
+        await supabase.auth.signOut();
+        navigate('/login?error=no_rbac');
+        return;
       }
 
-      if (data && !data.is_active) {
-        console.warn("[Auth Auditor] Perfil inativo. Entrando em Modo de Segurança.");
-        // await supabase.auth.signOut();
-        // navigate('/login?error=inactive');
-        // return;
+      if (!data.is_active) {
+        console.warn("[Auth Auditor] Perfil inativo. Acesso negado.");
+        await supabase.auth.signOut();
+        navigate('/login?error=inactive');
+        return;
       }
 
-      setUserLevel(data ? data.access_level : 1);
+      setUserLevel(data.access_level);
     };
     detectUserLevel();
   }, [navigate]);
+
+  // Bloqueia renderização do dashboard até o RBAC resolver — evita flash de conteúdo não-autorizado
+  if (userLevel === null) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F8FC] gap-4">
+        <div className="w-10 h-10 border-4 border-primaria border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-primaria font-bold text-[10px] uppercase tracking-[0.3em] animate-pulse">Verificando Permissões...</p>
+      </div>
+    );
+  }
 
   const canAccessFullAdmin = userLevel >= 4;
   const canAccessFinance = userLevel >= 3;

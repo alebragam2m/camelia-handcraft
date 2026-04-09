@@ -29,7 +29,7 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
   });
 
   const adjustMutation = useMutation({
-    mutationFn: (data: { productId: string; qty: number; type: 'IN' | 'OUT'; reason: string }) => 
+    mutationFn: (data: { productId: string; qty: number; type: 'ENTRADA' | 'SAIDA'; reason: string }) =>
       stockService.adjust(data.productId, data.qty, data.type, data.reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -47,7 +47,7 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
     const qty = parseInt(adjustForm.quantity);
     if (isNaN(qty) || qty <= 0) return alert("Quantidade inválida.");
 
-    const rpcType = adjustForm.change_type === 'Entrada' ? 'IN' : 'OUT';
+    const rpcType: 'ENTRADA' | 'SAIDA' = adjustForm.change_type === 'Entrada' ? 'ENTRADA' : 'SAIDA';
     adjustMutation.mutate({
       productId: selectedProduct.id,
       qty,

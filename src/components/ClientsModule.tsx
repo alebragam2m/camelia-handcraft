@@ -44,10 +44,10 @@ export default function ClientsModule() {
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-[10px] text-gray-500 font-medium">{client.email}</p>
-                      <p className="text-[9px] text-gray-400 uppercase font-bold tracking-tight">{client.whatsapp || 'Sem WhatsApp'}</p>
+                      <p className="text-[9px] text-gray-400 uppercase font-bold tracking-tight">{client.phone || 'Sem telefone'}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-secundaria">{formatCurrency(client.total_spent || 0)}</p>
+                      <p className="text-sm font-bold text-secundaria">—</p>
                       <p className="text-[9px] text-gray-400 uppercase font-bold">LTV (Lifetime Value)</p>
                     </td>
                     <td className="px-6 py-4">

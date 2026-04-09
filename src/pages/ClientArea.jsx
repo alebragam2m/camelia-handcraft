@@ -29,7 +29,7 @@ function ClientArea() {
     // Verificação de Admin
     const { data: adminRecord } = await supabase
       .from('admin_users')
-      .select('role')
+      .select('access_level')
       .eq('auth_user_id', user.id)
       .single();
     
@@ -66,8 +66,8 @@ function ClientArea() {
     e.preventDefault();
     const formData = new FormData(e.target);
     const updates = {
-      nome: formData.get('nome'),
-      telefone: formData.get('telefone'),
+      full_name: formData.get('nome'),
+      phone: formData.get('telefone'),
     };
 
     const { error } = await supabase
@@ -103,7 +103,7 @@ function ClientArea() {
           <h1 className="auth-title" style={{ fontSize: '1.8rem', margin: 0 }}>Minha Conta</h1>
           <div className="text-right">
             <span style={{ color: '#888' }} className="block text-xs uppercase font-bold tracking-widest">Bem-vinda de volta</span>
-            <span className="text-secundaria font-bold">{clientData?.nome || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Cliente'}</span>
+            <span className="text-secundaria font-bold">{clientData?.full_name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Cliente'}</span>
           </div>
         </div>
         
@@ -143,7 +143,7 @@ function ClientArea() {
                         <span className={`status ${order.status === 'Pago' ? 'delivered' : 'processing'}`}>{order.status}</span>
                       </div>
                       <p className="order-date">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
-                      <p className="order-total">Total: <strong>{formatCurrency(order.total_price)}</strong></p>
+                      <p className="order-total">Total: <strong>{formatCurrency(order.total_amount)}</strong></p>
                     </div>
                   ))
                 )}
@@ -155,11 +155,11 @@ function ClientArea() {
                 <h3 className="section-title">Dados Cadastrais</h3>
                 <form onSubmit={handleUpdateProfile} className="auth-form" style={{ maxWidth: '100%' }}>
                   <div className="row-2">
-                    <div className="input-group"><label>Nome Completo</label><input name="nome" type="text" defaultValue={clientData?.nome} /></div>
+                    <div className="input-group"><label>Nome Completo</label><input name="nome" type="text" defaultValue={clientData?.full_name} /></div>
                     <div className="input-group"><label>E-mail</label><input type="email" defaultValue={user?.email} disabled style={{ opacity: 0.6 }} /></div>
                   </div>
                   <div className="row-2">
-                    <div className="input-group"><label>WhatsApp / Celular</label><input name="telefone" type="tel" defaultValue={clientData?.telefone} /></div>
+                    <div className="input-group"><label>WhatsApp / Celular</label><input name="telefone" type="tel" defaultValue={clientData?.phone} /></div>
                   </div>
                   <button type="submit" className="auth-button" style={{ width: 'auto', padding: '12px 30px' }}>Salvar Alterações</button>
                 </form>
@@ -170,10 +170,7 @@ function ClientArea() {
               <div className="fade-in">
                 <h3 className="section-title">Meus Endereços</h3>
                 <div className="address-card">
-                  <strong>{clientData?.neighborhood || 'Endereço Principal'}</strong>
-                  <p>{clientData?.address || 'Não cadastrado'}</p>
-                  <p>{clientData?.city} - {clientData?.state}</p>
-                  <div className="card-actions"><button>Editar</button></div>
+                  <p className="text-gray-400 text-sm">O cadastro de endereço de entrega ainda não está disponível. Informe seu endereço diretamente no checkout ao realizar um pedido.</p>
                 </div>
               </div>
             )}

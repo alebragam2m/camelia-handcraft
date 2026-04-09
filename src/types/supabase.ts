@@ -18,6 +18,8 @@ export interface Product {
   image_url: string | null;
   image_2?: string | null;
   image_3?: string | null;
+  image_4?: string | null;
+  data_entrada?: string | null;
   show_on_site: boolean;
   is_preorder: boolean;
   is_insumo: boolean;
@@ -32,7 +34,7 @@ export interface Product {
 export interface Sale {
   id: string;
   created_at: string;
-  customer_id?: string | null;
+  client_id?: string | null;
   total_amount: number;
   total_cost?: number | null;
   status: string;

@@ -38,21 +38,35 @@ export default async function handler(req, res) {
     const saleId = session.metadata.saleId;
 
     try {
-      // 1. Atualizar o status da venda para "Pago"
-      const { error } = await supabase
+      // 1. Idempotência: verificar se a venda já foi processada antes de atualizar
+      const { data: existingSale, error: fetchError } = await supabase
         .from('sales')
-        .update({ 
+        .select('status')
+        .eq('id', saleId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      if (existingSale?.status === 'Paga') {
+        console.log(`[Webhook] Venda ${saleId} já estava PAGA — evento duplicado ignorado.`);
+        return res.status(200).json({ received: true });
+      }
+
+      // 2. Atualizar o status da venda para "Paga"
+      const { error: updateError } = await supabase
+        .from('sales')
+        .update({
           status: 'Paga',
-          payment_intent_id: session.payment_intent 
+          payment_intent_id: session.payment_intent
         })
         .eq('id', saleId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      console.log(`Venda ${saleId} atualizada para PAGA.`);
-      
+      console.log(`[Webhook] Venda ${saleId} atualizada para PAGA.`);
+
     } catch (error) {
-      console.error('Erro ao atualizar venda via Webhook:', error);
+      console.error('[Webhook] Erro ao atualizar venda:', error);
       return res.status(500).send('Database Update Error');
     }
   }

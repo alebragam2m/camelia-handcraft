@@ -20,7 +20,7 @@ export const stockService = {
   /**
    * Ajuste de Estoque via RPC (Segurança Atômica)
    */
-  async adjust(productId: string, quantity: number, type: 'IN' | 'OUT', notes: string = ''): Promise<any> {
+  async adjust(productId: string, quantity: number, type: 'ENTRADA' | 'SAIDA', notes: string = ''): Promise<any> {
     const { data, error } = await supabase.rpc('handle_inventory_adjustment', {
       p_product_id: parseInt(productId),
       p_quantity: quantity,

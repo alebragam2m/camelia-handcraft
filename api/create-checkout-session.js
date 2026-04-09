@@ -15,8 +15,39 @@ export default async function handler(req, res) {
 
   const { saleId, cartItems, customerEmail } = req.body;
 
+  if (!saleId || !cartItems?.length) {
+    return res.status(400).json({ error: 'Dados incompletos na requisição.' });
+  }
+
+  // 1. Validar que a venda existe e está pendente (Fix 1)
+  const { data: sale, error: saleError } = await supabase
+    .from('sales')
+    .select('id, status, total_amount')
+    .eq('id', saleId)
+    .single();
+
+  if (saleError || !sale) {
+    return res.status(404).json({ error: 'Venda não encontrada.' });
+  }
+
+  if (sale.status !== 'Pendente') {
+    return res.status(409).json({ error: `Venda já processada (status: ${sale.status}).` });
+  }
+
+  // 2. Validar integridade dos preços — previne manipulação de valor no frontend (Fix 1)
+  const calculatedTotal = cartItems.reduce(
+    (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
+    0
+  );
+  const storedTotal = Math.round(Number(sale.total_amount) * 100);
+
+  if (Math.abs(calculatedTotal - storedTotal) > 1) { // tolerância de 1 centavo (arredondamento)
+    console.error(`[CHECKOUT] Inconsistência de valor: calculado=${calculatedTotal}, banco=${storedTotal}, saleId=${saleId}`);
+    return res.status(400).json({ error: 'Inconsistência de valor detectada. Recarregue o carrinho.' });
+  }
+
   try {
-    // 1. Preparar os itens para o Stripe
+    // 3. Preparar os itens para o Stripe
     const line_items = cartItems.map((item) => ({
       price_data: {
         currency: 'brl',
@@ -29,10 +60,9 @@ export default async function handler(req, res) {
       quantity: item.quantity,
     }));
 
-    // 2. Criar a sessão do Stripe
+    // 4. Criar a sessão do Stripe
+    // 'payment_method_types: card' — quando ativar PIX no Stripe Dashboard ele aparece automaticamente
     const session = await stripe.checkout.sessions.create({
-      // 'automatic' = Stripe mostra os métodos habilitados no seu dashboard automaticamente.
-      // Quando você ativar PIX no Stripe Dashboard, ele aparecerá aqui sem precisar mudar o código.
       payment_method_types: ['card'],
       line_items,
       mode: 'payment',
@@ -44,21 +74,26 @@ export default async function handler(req, res) {
       },
     });
 
-    try {
-      // 3. Salvar o ID da sessão no Supabase para reconciliação
-      await supabase
-        .from('sales')
-        .update({ stripe_session_id: session.id })
-        .eq('id', saleId);
-    } catch (dbErr) {
-      console.warn('Falha ao registrar ID da sessão no banco (Venda ainda válida):', dbErr.message);
+    // 5. Salvar o stripe_session_id — falha aqui é crítica: sem ele o PaymentSuccess não encontra a venda (Fix 4)
+    const { error: updateError } = await supabase
+      .from('sales')
+      .update({ stripe_session_id: session.id })
+      .eq('id', saleId);
+
+    if (updateError) {
+      console.error('[CHECKOUT] Falha crítica ao salvar stripe_session_id:', updateError.message);
+      // Expirar a sessão Stripe para não deixar uma sessão órfã
+      await stripe.checkout.sessions.expire(session.id).catch((expireErr) => {
+        console.error('[CHECKOUT] Falha ao expirar sessão órfã:', expireErr.message);
+      });
+      return res.status(500).json({ error: 'Falha ao registrar sessão de pagamento. Tente novamente.' });
     }
 
-    // 4. Retornar a URL para o frontend redirecionar
+    // 6. Retornar a URL para o frontend redirecionar
     return res.status(200).json({ url: session.url });
   } catch (error) {
     console.error('[STRIPE FEEDBACK] Crítico:', error.stack || error.message);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: error.message,
       detail: "Verifique se as chaves da Stripe na Vercel estão corretas."
     });

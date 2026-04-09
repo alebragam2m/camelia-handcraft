@@ -1,11 +1,13 @@
 import { formatCurrency } from '../utils/formatCurrency';
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function Checkout() {
   const { cartItems, totalPrice, clearCart } = useCart();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
@@ -38,17 +40,12 @@ export default function Checkout() {
         .single();
       
       if (client) {
-        setFormData({
-          nome: client.nome || '',
+        setFormData(prev => ({
+          ...prev,
+          nome: client.full_name || '',
           email: client.email || '',
-          telefone: client.telefone || '',
-          cep: client.cep || '',
-          endereco: client.address || '',
-          numero: '',
-          bairro: client.neighborhood || '',
-          cidade: client.city || '',
-          estado: client.state || 'PA'
-        });
+          telefone: client.phone || '',
+        }));
       }
     }
   };
@@ -66,14 +63,10 @@ export default function Checkout() {
       // 1. Criar ou atualizar cliente no CRM
       const { data: client, error: clientErr } = await supabase
         .from('clients')
-        .upsert({ 
-          nome: formData.nome, 
-          email: formData.email, 
-          telefone: formData.telefone,
-          address: formData.endereco,
-          neighborhood: formData.bairro,
-          city: formData.cidade,
-          state: formData.estado
+        .upsert({
+          full_name: formData.nome,
+          email: formData.email,
+          phone: formData.telefone,
         }, { onConflict: 'email' })
         .select()
         .single();
@@ -104,11 +97,14 @@ export default function Checkout() {
         quantity: item.quantity,
         unit_price: Number(item.price),
         unit_cost: Number(item.cost || 0),
-        subtotal: Number(item.price) * item.quantity
       }));
 
       const { error: itemsErr } = await supabase.from('sale_items').insert(saleItems);
       if (itemsErr) throw itemsErr;
+
+      // Invalidar caches do admin para refletir o novo pedido e cliente imediatamente
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
 
       // 3. Chamar nossa API Vercel para criar sessão do Stripe
       const response = await fetch('/api/create-checkout-session', {
