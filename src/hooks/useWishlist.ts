@@ -1,30 +1,40 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
-async function fetchClientId(): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user?.email) return null;
-  const { data } = await supabase
-    .from('clients')
-    .select('id')
-    .eq('email', user.email)
-    .single();
-  return data?.id ?? null;
-}
-
 export function useWishlist() {
   const queryClient = useQueryClient();
 
-  const { data: clientId = null } = useQuery({
-    queryKey: ['wishlist-client-id'],
-    queryFn: fetchClientId,
+  // Passo 1: verifica sessão ativa. retry:false evita retentativas em usuários anônimos.
+  const { data: authUser = null } = useQuery({
+    queryKey: ['auth-user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user ?? null;
+    },
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 
+  // Passo 2: resolve client_id — só roda se houver usuário autenticado.
+  const { data: clientId = null } = useQuery({
+    queryKey: ['wishlist-client-id', authUser?.email],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', authUser!.email!)
+        .single();
+      return data?.id ?? null;
+    },
+    enabled: !!authUser?.email,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // Passo 3: busca IDs salvos — só roda se client_id existir.
   const { data: wishlistIds = [] } = useQuery<string[]>({
     queryKey: ['wishlist', clientId],
     queryFn: async () => {
-      if (!clientId) return [];
       const { data, error } = await supabase
         .from('wishlists')
         .select('product_id')
@@ -33,6 +43,7 @@ export function useWishlist() {
       return (data ?? []).map((w: { product_id: string }) => w.product_id);
     },
     enabled: !!clientId,
+    retry: false,
   });
 
   const toggle = useMutation({
@@ -58,5 +69,5 @@ export function useWishlist() {
     },
   });
 
-  return { wishlistIds, clientId, toggle };
+  return { wishlistIds, clientId, authUser, toggle };
 }
