@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -13,10 +13,14 @@ interface ProductFormProps {
 export default function ProductForm({ product, onClose }: ProductFormProps) {
   const queryClient = useQueryClient();
 
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>(product?.image_url || '');
+
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<any>({
     resolver: zodResolver(productSchema),
@@ -85,6 +89,8 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
 
         {/* CORPO DO FORMULÁRIO (ESTÉTICA ORIGINAL) */}
         <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="overflow-y-auto p-8 space-y-6 pt-24 no-scrollbar">
+          {/* Desabilita submit durante upload */}
+          <input type="hidden" />
           
           <div className="space-y-4">
             <div className="group">
@@ -100,18 +106,45 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Preço de Venda (R$)</label>
-                <input 
+                <input
                   type="number" step="0.01" {...register('price')}
-                  className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner" 
+                  className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Estoque Atual</label>
-                <input 
-                  type="number" {...register('stock')}
-                  className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner" 
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Custo de Produção (R$)</label>
+                <input
+                  type="number" step="0.01" {...register('cost')}
+                  className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner"
                 />
               </div>
+            </div>
+
+            {/* Indicador de margem de lucro em tempo real */}
+            {(() => {
+              const price = Number(watch('price') || 0);
+              const cost = Number(watch('cost') || 0);
+              if (price <= 0) return null;
+              const margem = ((price - cost) / price) * 100;
+              const cor = margem >= 40 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : margem >= 20 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-600';
+              const label = margem >= 40 ? 'Margem saudável' : margem >= 20 ? 'Margem moderada' : 'Margem baixa';
+              return (
+                <div className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${cor}`}>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+                  <span className="text-lg font-serif font-bold">{margem.toFixed(1)}%</span>
+                </div>
+              );
+            })()}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Estoque Atual</label>
+                <input
+                  type="number" {...register('stock')}
+                  className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner"
+                />
+              </div>
+              <div className="invisible">{/* spacer */}</div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -144,12 +177,56 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
               </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Link da Imagem (Principal)</label>
-              <input 
-                {...register('image_url')} 
-                className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria text-xs outline-none focus:border-primaria focus:bg-white transition-all font-mono" 
-                placeholder="https://..."
+            <div className="space-y-3">
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1 font-sans">Imagem Principal</label>
+
+              {/* Preview */}
+              {previewUrl && (
+                <div className="w-full h-40 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
+                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+
+              {/* Upload por arquivo */}
+              <label className={`flex items-center gap-3 w-full p-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200 cursor-pointer hover:border-primaria hover:bg-white transition-all ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-gray-400 shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  {uploading ? 'Enviando...' : 'Selecionar arquivo'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setPreviewUrl(URL.createObjectURL(file));
+                    setUploading(true);
+                    try {
+                      const url = await productService.uploadImage(file);
+                      setValue('image_url', url);
+                      setPreviewUrl(url);
+                    } catch (err: any) {
+                      alert('Erro no upload: ' + err.message);
+                      setPreviewUrl(product?.image_url || '');
+                    } finally {
+                      setUploading(false);
+                    }
+                  }}
+                />
+              </label>
+
+              {/* URL manual — fallback para links externos existentes */}
+              <input
+                {...register('image_url')}
+                className="w-full p-3 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria text-xs outline-none focus:border-primaria focus:bg-white transition-all font-mono"
+                placeholder="ou cole uma URL externa: https://..."
+                onChange={(e) => {
+                  register('image_url').onChange(e);
+                  setPreviewUrl(e.target.value);
+                }}
               />
             </div>
 
@@ -218,10 +295,10 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
           <div className="pt-8 mb-4">
             <button 
               type="submit" 
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || uploading}
               className="w-full bg-secundaria text-white font-bold py-5 rounded-2xl uppercase tracking-widest text-sm hover:bg-black transition-all shadow-xl active:scale-95 disabled:bg-gray-300 transform"
             >
-              {mutation.isPending ? 'Sincronizando...' : product ? 'Salvar Mudanças' : 'Cadastrar na Camélia'}
+              {uploading ? 'Enviando imagem...' : mutation.isPending ? 'Sincronizando...' : product ? 'Salvar Mudanças' : 'Cadastrar na Camélia'}
             </button>
             {product && (
                <p className="text-center text-[9px] text-gray-300 mt-4 uppercase tracking-widest">ID: {product.id}</p>
