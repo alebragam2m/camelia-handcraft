@@ -38,6 +38,9 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
       measure_cm: product?.measure_cm || '',
       weight_kg: product?.weight_kg || 0,
       supplier_id: product?.supplier_id || null,
+      min_stock: product?.min_stock ?? 5,
+      material: product?.material || '',
+      tags: product?.tags || '',
     },
   });
 
@@ -176,10 +179,36 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
                <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-[8px] font-bold text-gray-400 uppercase mb-1 px-1">Ficha Técnica / Notas</label>
-                    <textarea 
-                      {...register('technical_notes')} 
+                    <textarea
+                      {...register('technical_notes')}
                       rows={2}
                       className="w-full p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs outline-none focus:border-primaria transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[8px] font-bold text-gray-400 uppercase mb-1 px-1">Estoque Mínimo</label>
+                    <input
+                      type="number"
+                      {...register('min_stock', { valueAsNumber: true })}
+                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs outline-none focus:border-primaria transition-all text-secundaria font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[8px] font-bold text-gray-400 uppercase mb-1 px-1">Material</label>
+                    <input
+                      type="text"
+                      {...register('material')}
+                      placeholder="Ex: Algodão, Linho..."
+                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs outline-none focus:border-primaria transition-all text-secundaria"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-[8px] font-bold text-gray-400 uppercase mb-1 px-1">Tags <span className="normal-case font-normal text-gray-300">(separe por vírgulas)</span></label>
+                    <input
+                      type="text"
+                      {...register('tags')}
+                      placeholder="Ex: natal, mesa posta, presente..."
+                      className="w-full p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs outline-none focus:border-primaria transition-all text-secundaria"
                     />
                   </div>
                </div>

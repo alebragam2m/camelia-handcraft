@@ -29,6 +29,10 @@ export interface Product {
   weight_kg?: number | null;
   supplier_id?: string | null;
   created_at: string;
+  // Campos adicionados na migration v2
+  min_stock?: number | null;
+  material?: string | null;
+  tags?: string | null;
 }
 
 export interface Sale {
@@ -57,6 +61,16 @@ export interface Client {
   phone?: string | null;
   is_vip: boolean;
   created_at: string;
+  // Campos adicionados na migration v2
+  cpf_cnpj?: string | null;
+  birth_date?: string | null;
+  address?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  acquisition_channel?: string | null;
+  internal_notes?: string | null;
 }
 
 export interface Supplier {

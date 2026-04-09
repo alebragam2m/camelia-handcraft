@@ -83,7 +83,15 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
                 <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="p-5 pl-8 font-bold text-secundaria">{p.nome}</td>
                   <td className="p-5 text-center">
-                    <span className={`px-4 py-1.5 rounded-lg font-bold text-lg ${Number(p.stock) <= 5 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'}`}>{p.stock}</span>
+                    <span className={`px-4 py-1.5 rounded-lg font-bold text-lg ${
+                      Number(p.stock) === 0
+                        ? 'bg-red-50 text-red-600'
+                        : Number(p.stock) <= (p.min_stock ?? 5)
+                          ? 'bg-amber-50 text-amber-600'
+                          : 'bg-emerald-50 text-emerald-700'
+                    }`}>
+                      {Number(p.stock) === 0 ? '🔴' : Number(p.stock) <= (p.min_stock ?? 5) ? '🟡' : '🟢'} {p.stock}
+                    </span>
                   </td>
                   <td className="p-5 text-right pr-8">
                     <button onClick={() => setSelectedProduct(p)} className="text-[10px] bg-secundaria text-white px-4 py-2 rounded-lg font-bold uppercase tracking-widest hover:bg-black transition-all">Histórico PCP</button>

@@ -9,6 +9,7 @@ export default function Checkout() {
   const { cartItems, totalPrice, clearCart } = useCart();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [stockErrors, setStockErrors] = useState([]);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
@@ -58,8 +59,34 @@ export default function Checkout() {
     e.preventDefault();
     if (cartItems.length === 0) return;
 
+    setStockErrors([]);
     setLoading(true);
+
     try {
+      // 0. Validar estoque atual no banco antes de qualquer escrita (Regra de Negócio #2)
+      const productIds = cartItems.map(item => item.id);
+      const { data: currentStock, error: stockErr } = await supabase
+        .from('products')
+        .select('id, nome, stock')
+        .in('id', productIds);
+
+      if (stockErr) throw new Error('Não foi possível verificar o estoque. Tente novamente.');
+
+      const insuficientes = cartItems.filter(item => {
+        const produto = currentStock.find(p => String(p.id) === String(item.id));
+        return !produto || produto.stock < item.quantity;
+      }).map(item => {
+        const produto = currentStock.find(p => String(p.id) === String(item.id));
+        const disponivel = produto ? produto.stock : 0;
+        return { nome: item.nome, solicitado: item.quantity, disponivel };
+      });
+
+      if (insuficientes.length > 0) {
+        setStockErrors(insuficientes);
+        setLoading(false);
+        return;
+      }
+
       // 1. Criar ou atualizar cliente no CRM
       const { data: client, error: clientErr } = await supabase
         .from('clients')
@@ -207,6 +234,19 @@ export default function Checkout() {
             </div>
 
             <div className="md:col-span-2 pt-10">
+              {stockErrors.length > 0 && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-5">
+                  <p className="text-red-700 font-bold text-xs uppercase tracking-widest mb-3">Estoque insuficiente para finalizar o pedido:</p>
+                  <ul className="space-y-1">
+                    {stockErrors.map((item, i) => (
+                      <li key={i} className="text-red-600 text-sm font-medium">
+                        <strong>{item.nome}</strong> — você pediu {item.solicitado} {item.solicitado === 1 ? 'unidade' : 'unidades'}, {item.disponivel === 0 ? 'mas está esgotado' : `mas só há ${item.disponivel} disponível`}.
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mt-3">Ajuste as quantidades no carrinho e tente novamente.</p>
+                </div>
+              )}
               <button disabled={loading} className="w-full bg-secundaria text-white font-bold py-6 rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-[4px] text-sm active:scale-[0.98] disabled:bg-gray-400 flex items-center justify-center gap-3">
                 {loading ? "Preparando Pagamento..." : (
                   <>

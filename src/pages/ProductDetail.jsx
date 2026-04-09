@@ -114,13 +114,13 @@ function ProductDetail() {
                       </div>
                       
                       {product.is_preorder ? (
-                        <a 
-                          href={`https://wa.me/5591991145232?text=Olá, gostaria de encomendar o produto ${encodeURIComponent(product.nome)}`}
+                        <a
+                          href={`https://wa.me/5591991145232?text=${encodeURIComponent(`Olá, tenho interesse no produto: ${product.nome}`)}`}
                           target="_blank"
                           rel="noreferrer"
                           className="flex-1 font-bold py-4 rounded-xl shadow-xl transition-all uppercase tracking-[3px] text-[11px] active:scale-95 bg-amber-600 hover:bg-amber-700 text-white shadow-amber-900/10 text-center"
                         >
-                          Encomendar agora
+                          Encomendar via WhatsApp
                         </a>
                       ) : (
                         <button 

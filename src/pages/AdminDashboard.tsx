@@ -120,6 +120,7 @@ export default function AdminDashboard() {
   const fatDia = sales.filter((v: any) => v.created_at?.startsWith(todayStr)).reduce((acc, v: any) => acc + Number(v.total_amount), 0);
   const fatMes = vMes.reduce((acc, v: any) => acc + Number(v.total_amount), 0);
   const lucroMes = vMes.reduce((acc, v: any) => acc + (Number(v.total_amount) - Number(v.total_cost || 0)), 0);
+  const produtosEmAlerta = products.filter((p: any) => (p.stock ?? 0) <= (p.min_stock ?? 5)).length;
 
   return (
     <ErrorBoundary>
@@ -192,7 +193,7 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               {activeTab === 'visao_geral' && (
                 <div className="space-y-6 animate-fade-in-down">
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                       <div className="bg-white p-6 rounded-3xl shadow-sm border-l-[6px] border-l-emerald-500">
                          <h3 className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-1">Faturamento (Hoje)</h3>
                          <p className="text-3xl font-serif text-secundaria font-bold tracking-tighter">{formatCurrency(fatDia)}</p>
@@ -204,6 +205,11 @@ export default function AdminDashboard() {
                       <div className="bg-[#131722] p-6 rounded-3xl shadow-xl border-l-[6px] border-l-indigo-400">
                          <h3 className="text-gray-500 text-[9px] font-bold uppercase tracking-widest mb-1">Lucro Estimado (Mês)</h3>
                          <p className="text-2xl font-serif text-[#34D399] font-bold tracking-tighter">{canAccessFinance ? formatCurrency(lucroMes) : 'Restrito'}</p>
+                      </div>
+                      <div className={`p-6 rounded-3xl shadow-sm border-l-[6px] ${produtosEmAlerta > 0 ? 'bg-amber-50 border-l-amber-500' : 'bg-white border-l-gray-200'}`}>
+                         <h3 className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mb-1">Produtos em Alerta</h3>
+                         <p className="text-3xl font-serif font-bold tracking-tighter text-amber-600">{produtosEmAlerta}</p>
+                         <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">Estoque ≤ mínimo</p>
                       </div>
                    </div>
                 </div>
