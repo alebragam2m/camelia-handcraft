@@ -58,7 +58,7 @@ export default function AdminDashboard() {
     const detectUserLevel = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate('/login'); return; }
-      
+
       const { data, error } = await supabase
         .from('admin_users')
         .select('access_level, is_active')
@@ -66,20 +66,21 @@ export default function AdminDashboard() {
         .single();
 
       if (error) {
+        // Erro de rede ou query — não destrói sessão, apenas bloqueia acesso
         console.error("[Auth Auditor] Erro ao consultar privilégios de Admin:", error);
-        await supabase.auth.signOut();
         navigate('/login');
         return;
       }
 
       if (!data) {
+        // Sem registro no RBAC — não destrói sessão
         console.warn("[Auth Auditor] Sem registro no RBAC. Acesso negado.");
-        await supabase.auth.signOut();
         navigate('/login?error=no_rbac');
         return;
       }
 
       if (!data.is_active) {
+        // Perfil explicitamente inativo — único caso em que destrói sessão
         console.warn("[Auth Auditor] Perfil inativo. Acesso negado.");
         await supabase.auth.signOut();
         navigate('/login?error=inactive');
@@ -89,7 +90,8 @@ export default function AdminDashboard() {
       setUserLevel(data.access_level);
     };
     detectUserLevel();
-  }, [navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Bloqueia renderização do dashboard até o RBAC resolver — evita flash de conteúdo não-autorizado
   if (userLevel === null) {

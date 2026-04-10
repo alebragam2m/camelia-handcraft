@@ -17,12 +17,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Timeout de segurança: se o Supabase demorar mais de 8s, libera para erro/login
-    const timeoutId = setTimeout(() => {
-      console.warn("[Auth] Timeout na verificação de sessão — redirecionando.");
-      setLoading(false);
-    }, 8000);
-
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -31,7 +25,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         console.error("[Auth] Erro crítico de sessão:", err);
         setIsAuthenticated(false);
       } finally {
-        clearTimeout(timeoutId);
         setLoading(false);
       }
     };
@@ -44,10 +37,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       setLoading(false);
     });
 
-    return () => {
-      clearTimeout(timeoutId);
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   if (loading) {
