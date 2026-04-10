@@ -26,6 +26,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storageKey: 'camelia-auth',
     flowType: 'implicit',
+    lock: false,
   },
   realtime: {
     params: {

@@ -31,11 +31,9 @@ const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Falha crítica: Elemento root não encontrado no HTML.');
 
 createRoot(rootElement).render(
-  <StrictMode>
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </ErrorBoundary>
-  </StrictMode>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
