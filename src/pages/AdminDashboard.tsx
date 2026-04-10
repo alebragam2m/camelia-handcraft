@@ -56,8 +56,11 @@ export default function AdminDashboard() {
   // Auth & Level detection
   useEffect(() => {
     const detectUserLevel = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate('/login'); return; }
+      // getSession() lê o localStorage de forma síncrona — disponível imediatamente no reload
+      // getUser() faz round-trip ao servidor e pode retornar null antes da sessão ser restaurada
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { navigate('/login'); return; }
+      const user = session.user;
 
       const { data, error } = await supabase
         .from('admin_users')
