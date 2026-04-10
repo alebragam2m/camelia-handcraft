@@ -8,15 +8,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('[Supabase] Credenciais ausentes. Verifique o arquivo .env');
 }
 
-// Limpeza de localStorage corrompido — roda uma vez por deploy.
-// Remove apenas chaves sb-* (Supabase auth/PKCE) sem afetar carrinho ou preferências.
-const DEPLOY_STAMP = '2d3afd2-lockfix';
-if (typeof window !== 'undefined' && localStorage.getItem('deploy_stamp') !== DEPLOY_STAMP) {
-  Object.keys(localStorage)
-    .filter(k => k.startsWith('sb-'))
-    .forEach(k => localStorage.removeItem(k));
-  localStorage.setItem('deploy_stamp', DEPLOY_STAMP);
-}
 
 /**
  * Cliente Supabase Singleton (Mission Critical)
