@@ -17,6 +17,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    // Apenas getSession() — sem onAuthStateChange aqui.
+    // App.tsx já tem um onAuthStateChange global registrado.
+    // Dois listeners simultâneos competiam pelo lock do Supabase Auth.
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -30,14 +33,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     };
 
     checkAuth();
-
-    // Listener para mudanças de login/logout em tempo real
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   if (loading) {
