@@ -41,6 +41,11 @@ function AppContent() {
     /**
      * MISSION CRITICAL: Auth Listener
      * Redireciona admins para o painel se tentarem acessar rotas públicas logados.
+     *
+     * navigate excluído das deps intencionalmente: a referência estável do
+     * router é suficiente e evita re-registrar o listener a cada render,
+     * o que causava múltiplos onAuthStateChange simultâneos e o erro
+     * "Lock stolen" no localStorage do Supabase.
      */
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
@@ -51,11 +56,10 @@ function AppContent() {
           .maybeSingle();
 
         if (error) {
-           console.error("[Auth Auditor] Erro de Schema detectado. Fallback ativado.");
+          console.error("[Auth Auditor] Erro de Schema detectado. Fallback ativado.");
         }
 
         const publicPaths = ['/', '/login', '/minha-conta'];
-        // Se houver registro e for admin, redireciona. Se der erro de coluna, mantém o fluxo normal para evitar o loop de login catastrófico.
         if (adminRecord?.is_active && (adminRecord.access_level || 0) >= 2 && publicPaths.includes(window.location.pathname)) {
           navigate('/admin');
         }
@@ -63,7 +67,8 @@ function AppContent() {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <CartProvider>

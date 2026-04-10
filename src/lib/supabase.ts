@@ -10,7 +10,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Limpeza de localStorage corrompido — roda uma vez por deploy.
 // Remove apenas chaves sb-* (Supabase auth/PKCE) sem afetar carrinho ou preferências.
-const DEPLOY_STAMP = '3dca5f2';
+const DEPLOY_STAMP = '2d3afd2-lockfix';
 if (typeof window !== 'undefined' && localStorage.getItem('deploy_stamp') !== DEPLOY_STAMP) {
   Object.keys(localStorage)
     .filter(k => k.startsWith('sb-'))
@@ -19,18 +19,22 @@ if (typeof window !== 'undefined' && localStorage.getItem('deploy_stamp') !== DE
 }
 
 /**
- * Cliente Supabase com Tipagem Estrita (Mission Critical)
- * 
- * RESOLUÇÃO DE CONFLITO (Session Lock):
- * Removido o storageKey customizado para evitar o erro "Lock swallowed/stolen" em múltiplas abas.
+ * Cliente Supabase Singleton (Mission Critical)
+ *
+ * storageKey fixo: isola a sessão desta app de outras instâncias
+ * do Supabase no mesmo domínio, evitando o erro "Lock stolen".
+ *
+ * flowType 'implicit' elimina o lock do PKCE code_verifier que
+ * causava o conflito "lock:sb-...-auth-token was released because
+ * another request stole it" ao abrir múltiplas abas.
  */
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    // Removido storageKey para estabilidade multi-aba
-    flowType: 'pkce',
+    storageKey: 'camelia-auth',
+    flowType: 'implicit',
   },
   realtime: {
     params: {
