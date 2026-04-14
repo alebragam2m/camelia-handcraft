@@ -17,6 +17,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<any>({
     resolver: zodResolver(productSchema),
@@ -54,6 +55,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
 
   const category = watch('category');
   const isInsumo = watch('is_insumo');
+  const [uploadingImage, setUploadingImage] = React.useState(false);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fadeIn duration-300">
@@ -124,7 +126,9 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
                   <option value="">Sem Coleção</option>
                   <option value="Natal">Natal</option>
                   <option value="Círio">Círio</option>
-                  <option value="Mesa Posta">Mesa Posta</option>
+                  <option value="Páscoa">Páscoa</option>
+                  <option value="Provence">Provence</option>
+                  <option value="Diversos">Diversos</option>
                   <option value="Frutas e Legumes">Frutas e Legumes</option>
                   <option value="Flores">Flores</option>
                 </select>
@@ -145,12 +149,35 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Link da Imagem (Principal)</label>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">
+                 Imagem da Peça (Arquivo Local) {uploadingImage && <span className="text-primaria lowercase animate-pulse font-normal ml-2">Enviando...</span>}
+              </label>
               <input 
-                {...register('image_url')} 
-                className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria text-xs outline-none focus:border-primaria focus:bg-white transition-all font-mono" 
-                placeholder="https://..."
+                type="file" 
+                accept="image/*"
+                onChange={async (e) => {
+                   const file = e.target.files?.[0];
+                   if (file) {
+                      setUploadingImage(true);
+                      try {
+                         const url = await productService.uploadImage(file);
+                         setValue('image_url', url);
+                      } catch (err: any) {
+                         alert("Erro ao enviar imagem: " + (err.message || ''));
+                      } finally {
+                         setUploadingImage(false);
+                      }
+                   }
+                }}
+                className="w-full text-xs text-gray-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-[9px] file:font-bold file:uppercase file:tracking-widest file:bg-primaria file:text-white hover:file:bg-secundaria file:cursor-pointer transition-all bg-gray-50 border border-gray-100 rounded-2xl"
               />
+              <input type="hidden" {...register('image_url')} />
+              
+              {watch('image_url') && (
+                 <div className="mt-4 w-24 h-24 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                    <img src={watch('image_url')} alt="Preview" className="w-full h-full object-cover" />
+                 </div>
+              )}
             </div>
 
             <div className="flex items-center gap-6 p-5 bg-gray-50 rounded-3xl border border-gray-100 shadow-inner">

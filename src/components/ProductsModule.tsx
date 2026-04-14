@@ -66,6 +66,13 @@ export default function ProductsModule() {
     setEditProduct(null);
   };
 
+  const handleDelete = (e: React.MouseEvent, id: string, nome: string) => {
+    e.stopPropagation(); // Evita abrir o modal de edição ao clicar em excluir
+    if (window.confirm(`ATENÇÃO: Tem certeza que deseja excluir "${nome}" permanentemente do catálogo? Essa ação é irreversível.`)) {
+       deleteMutation.mutate(id);
+    }
+  };
+
   const openCreateMode = (category: string) => {
     // Agora o modal apenas abre o ProductForm sem dados (New Mode)
     setEditProduct(null);
@@ -162,7 +169,15 @@ export default function ProductsModule() {
                     <p className="text-primaria font-bold text-xs mt-1">{formatCurrency(prod.price)}</p>
                     <div className="flex justify-between items-center mt-3">
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${Number(prod.stock) < 5 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'}`}>{prod.stock} un.</span>
-                      <span className="text-[10px] text-gray-300 font-bold group-hover:text-primaria transition-colors">Editar →</span>
+                      <div className="flex gap-3">
+                         <span className="text-[10px] text-gray-300 font-bold group-hover:text-primaria transition-colors">Editar</span>
+                         <button 
+                           onClick={(e) => handleDelete(e, prod.id, prod.nome)} 
+                           className="text-[10px] text-red-200 font-bold hover:text-red-500 transition-colors"
+                         >
+                           Excluir
+                         </button>
+                      </div>
                     </div>
                   </div>
                 </div>
