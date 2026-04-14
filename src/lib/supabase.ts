@@ -24,14 +24,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storageKey: 'camelia-auth',
-    flowType: 'implicit',
-    // Bypassa o mecanismo de lock interno do Supabase Auth.
-    // lock:false não é válido — a prop espera uma função.
-    // Chamadas concorrentes (ProtectedRoute + App.tsx + AdminDashboard)
-    // competiam pelo mesmo lock 'camelia-auth' e causavam o erro
-    // "was released because another request stole it".
-    lock: (_name: string, _acquireTimeout: number, fn: () => Promise<unknown>) => fn(),
+    flowType: 'pkce',
   },
   realtime: {
     params: {
