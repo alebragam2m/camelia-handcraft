@@ -25,6 +25,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
+    storageKey: 'camelia_v4_auth_token', // MUITO IMPORTANTE: Mudar a chave limpa o cache corrompido do 'Lock stolen'
   },
   realtime: {
     params: {

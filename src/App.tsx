@@ -49,6 +49,10 @@ function AppContent() {
      */
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        // OTIMIZAÇÃO CRÍTICA: Só consulta banco se estivermos nas rodas de login de clientes
+        const loginPaths = ['/login', '/minha-conta'];
+        if (!loginPaths.includes(window.location.pathname)) return;
+
         const { data: adminRecord, error } = await supabase
           .from('admin_users')
           .select('access_level, is_active')
@@ -56,11 +60,10 @@ function AppContent() {
           .maybeSingle();
 
         if (error) {
-          console.error("[Auth Auditor] Erro de Schema detectado. Fallback ativado.");
+          console.warn("[Auth Auditor] Falha ou atraso de rede ao ler admin_users:", error.message);
         }
 
-        const publicPaths = ['/', '/login', '/minha-conta'];
-        if (adminRecord?.is_active && (adminRecord.access_level || 0) >= 2 && publicPaths.includes(window.location.pathname)) {
+        if (adminRecord?.is_active && (adminRecord.access_level || 0) >= 2) {
           navigate('/admin');
         }
       }
