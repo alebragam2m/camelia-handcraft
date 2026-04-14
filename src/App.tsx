@@ -38,39 +38,9 @@ function AppContent() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    /**
-     * MISSION CRITICAL: Auth Listener
-     * Redireciona admins para o painel se tentarem acessar rotas públicas logados.
-     *
-     * navigate excluído das deps intencionalmente: a referência estável do
-     * router é suficiente e evita re-registrar o listener a cada render,
-     * o que causava múltiplos onAuthStateChange simultâneos e o erro
-     * "Lock stolen" no localStorage do Supabase.
-     */
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        // OTIMIZAÇÃO CRÍTICA: Só consulta banco se estivermos nas rodas de login de clientes
-        const loginPaths = ['/login', '/minha-conta'];
-        if (!loginPaths.includes(window.location.pathname)) return;
-
-        const { data: adminRecord, error } = await supabase
-          .from('admin_users')
-          .select('access_level, is_active')
-          .eq('auth_user_id', session.user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.warn("[Auth Auditor] Falha ou atraso de rede ao ler admin_users:", error.message);
-        }
-
-        if (adminRecord?.is_active && (adminRecord.access_level || 0) >= 2) {
-          navigate('/admin');
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // AppContent montado sem listener global de auth.
+    // Isso evita o erro crítico do Supabase: "Lock stolen by another request"
+    // e permite fluidez total entre páginas públicas e privadas.
   }, []);
 
   return (
