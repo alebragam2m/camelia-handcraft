@@ -19,6 +19,12 @@ export const clientService = {
 
   async save(payload: Partial<Client>, id?: string): Promise<Client> {
     const isUpdate = !!id;
+    
+    // Tratamento de segurança para e-mails não preenchidos (evitar Constraint clients_email_key)
+    if (payload.email === '') {
+       payload.email = null as any;
+    }
+
     let query;
 
     if (isUpdate) {

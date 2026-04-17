@@ -36,6 +36,7 @@ export default function ClientsModule() {
       cpf_cnpj: client.cpf_cnpj,
       birth_date: client.birth_date,
       address: client.address,
+      address_complement: client.address_complement,
       neighborhood: client.neighborhood,
       city: client.city,
       state: client.state,
@@ -208,13 +209,24 @@ export default function ClientsModule() {
                       />
                     </div>
 
-                    <div className="col-span-2 space-y-1">
+                    <div className="space-y-1">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Endereço</label>
                       <input
                         type="text"
                         value={form.address || ''}
                         onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-                        placeholder="Rua, número, complemento"
+                        placeholder="Rua, número"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-secundaria outline-none focus:border-primaria transition-colors"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Complemento / Ap</label>
+                      <input
+                        type="text"
+                        value={form.address_complement || ''}
+                        onChange={e => setForm(f => ({ ...f, address_complement: e.target.value }))}
+                        placeholder="Apto 13 / Casa B"
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-secundaria outline-none focus:border-primaria transition-colors"
                       />
                     </div>

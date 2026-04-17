@@ -65,6 +65,7 @@ export interface Client {
   cpf_cnpj?: string | null;
   birth_date?: string | null;
   address?: string | null;
+  address_complement?: string | null;
   neighborhood?: string | null;
   city?: string | null;
   state?: string | null;
