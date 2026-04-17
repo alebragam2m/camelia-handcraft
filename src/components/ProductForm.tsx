@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { productSchema } from '../schemas/productSchema';
 import { productService } from '../services/productService';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../utils/cropImage';
 
 interface ProductFormProps {
   product?: any; 
@@ -64,6 +66,37 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
     if (raw === 'Sem linha / Coleção' || !raw) return [];
     return raw.split(',').map((s: string) => s.trim()).filter(Boolean);
   });
+
+  // Estúdio
+  const [cropFileContext, setCropFileContext] = React.useState<{ url: string, file: File } | null>(null);
+  const [crop, setCrop] = React.useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = React.useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = React.useState(null);
+  const [isCropping, setIsCropping] = React.useState(false);
+
+  const onCropComplete = React.useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const finishCrop = async () => {
+    if (!cropFileContext || !croppedAreaPixels) return;
+    setIsCropping(true);
+    try {
+       const croppedImageBlob = await getCroppedImg(cropFileContext.url, croppedAreaPixels);
+       if (croppedImageBlob) {
+          setUploadingImage(true);
+          const url = await productService.uploadImage(croppedImageBlob as any);
+          setValue('image_url', url);
+       }
+    } catch (e: any) {
+       console.error(e);
+       alert("Falha ao recortar a imagem.");
+    } finally {
+       setIsCropping(false);
+       setUploadingImage(false);
+       setCropFileContext(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fadeIn duration-300">
@@ -214,16 +247,21 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
                                accept="image/*"
                                onChange={async (e) => {
                                   const file = e.target.files?.[0];
-                                  if (file) {
-                                     setUploadingImage(true);
-                                     try {
-                                        const url = await productService.uploadImage(file);
-                                        setValue(item.field, url);
-                                     } catch (err: any) {
-                                        alert("Erro ao enviar imagem: " + (err.message || ''));
-                                     } finally {
-                                        setUploadingImage(false);
-                                     }
+                                  if (!file) return;
+
+                                  if (item.field === 'image_url') {
+                                    const objectUrl = URL.createObjectURL(file);
+                                    setCropFileContext({ url: objectUrl, file });
+                                  } else {
+                                    setUploadingImage(true);
+                                    try {
+                                       const url = await productService.uploadImage(file);
+                                       setValue(item.field, url);
+                                    } catch (err: any) {
+                                       alert("Erro ao enviar imagem: " + (err.message || ''));
+                                    } finally {
+                                       setUploadingImage(false);
+                                    }
                                   }
                                }}
                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -312,6 +350,52 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
             )}
           </div>
         </form>
+
+        {/* MODAL DE ESTÚDIO FOTOGRÁFICO */}
+        {cropFileContext && (
+          <div className="fixed inset-0 z-[200] max-w-full m-auto h-screen bg-black flex flex-col justify-between items-center text-white animate-in zoomIn duration-300">
+             <div className="absolute top-0 inset-x-0 p-6 z-10 bg-gradient-to-b from-black/80 to-transparent flex justify-between items-center">
+                <h4 className="font-bold text-sm uppercase tracking-widest text-[#D4AF37]">Estúdio de Enquadramento</h4>
+                <button type="button" onClick={() => setCropFileContext(null)} className="text-gray-300 hover:text-white uppercase font-bold text-[10px] tracking-widest">Cancelar</button>
+             </div>
+             
+             <div className="relative w-full h-full flex-1">
+                <Cropper
+                  image={cropFileContext.url}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={4 / 5}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                  classes={{ containerClassName: "bg-black" }}
+                />
+             </div>
+             
+             <div className="absolute bottom-0 inset-x-0 p-8 z-10 bg-gradient-to-t from-black/90 to-transparent flex flex-col items-center gap-6">
+                <div className="w-full max-w-md flex items-center justify-between">
+                   <span className="text-xs uppercase tracking-widest font-bold text-gray-400">Zoom</span>
+                   <input
+                      type="range"
+                      value={zoom}
+                      min={1}
+                      max={3}
+                      step={0.1}
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="w-3/4 accent-[#D4AF37]"
+                   />
+                </div>
+                <button 
+                  onClick={finishCrop} 
+                  disabled={isCropping}
+                  className="w-full max-w-md bg-[#D4AF37] text-black font-bold py-4 rounded-xl uppercase tracking-widest hover:bg-yellow-400 active:scale-95 transition-all text-xs disabled:opacity-50"
+                >
+                  {isCropping ? 'Processando Corte...' : 'Confirmar Enquadramento (Capa)'}
+                </button>
+             </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
