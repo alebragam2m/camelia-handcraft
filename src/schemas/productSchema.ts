@@ -11,6 +11,7 @@ export const productSchema = z.object({
   price: z.coerce.number({ message: 'Preço deve ser um número' }).default(0),
   cost: z.coerce.number().nullable().default(0),
   stock: z.coerce.number().nullable().default(0),
+  stock_to_make: z.coerce.number().nullable().default(0),
   category: z.string().nullable().default('Outros'),
   colecao: z.string().nullable().default('Geral'),
   description: z.string().nullable().default(''),
