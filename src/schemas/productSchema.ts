@@ -17,6 +17,7 @@ export const productSchema = z.object({
   image_url: z.union([z.string().url('URL inválida'), z.literal('')]).nullable().default(null),
   image_2: z.union([z.string().url('URL inválida'), z.literal('')]).nullable().optional(),
   image_3: z.union([z.string().url('URL inválida'), z.literal('')]).nullable().optional(),
+  image_4: z.union([z.string().url('URL inválida'), z.literal('')]).nullable().optional(),
   show_on_site: z.boolean().default(false),
   is_preorder: z.boolean().default(false),
   is_insumo: z.boolean().default(false),

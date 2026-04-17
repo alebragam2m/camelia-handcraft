@@ -15,6 +15,9 @@ export const productService = {
       price: p.price ?? 0,
       stock: p.stock ?? 0,
       stock_to_make: p.stock_to_make ?? 0,
+      image_2: p.image_2 || '',
+      image_3: p.image_3 || '',
+      image_4: p.image_4 || '',
       show_on_site: p.show_on_site ?? true,
     }));
   },
@@ -67,6 +70,9 @@ export const productService = {
       price: data.price ?? 0,
       stock: data.stock ?? 0,
       stock_to_make: data.stock_to_make ?? 0,
+      image_2: data.image_2 || '',
+      image_3: data.image_3 || '',
+      image_4: data.image_4 || '',
       show_on_site: data.show_on_site ?? true,
     };
   },
@@ -81,6 +87,10 @@ export const productService = {
       stock_to_make: Number(data.stock_to_make) || 0,
       weight_kg: Number(data.weight_kg) || 0,
       supplier_id: data.supplier_id || null,
+      image_url: data.image_url || null,
+      image_2: data.image_2 || null,
+      image_3: data.image_3 || null,
+      image_4: data.image_4 || null,
       show_on_site: data.show_on_site ?? true,
     };
 

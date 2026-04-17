@@ -33,6 +33,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
       image_url: product?.image_url || '',
       image_2: product?.image_2 || '',
       image_3: product?.image_3 || '',
+      image_4: product?.image_4 || '',
       show_on_site: product?.show_on_site ?? true,
       is_preorder: product?.is_preorder || false,
       is_insumo: product?.is_insumo || false,
@@ -164,35 +165,60 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">
-                 Imagem da Peça (Arquivo Local) {uploadingImage && <span className="text-primaria lowercase animate-pulse font-normal ml-2">Enviando...</span>}
-              </label>
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={async (e) => {
-                   const file = e.target.files?.[0];
-                   if (file) {
-                      setUploadingImage(true);
-                      try {
-                         const url = await productService.uploadImage(file);
-                         setValue('image_url', url);
-                      } catch (err: any) {
-                         alert("Erro ao enviar imagem: " + (err.message || ''));
-                      } finally {
-                         setUploadingImage(false);
-                      }
-                   }
-                }}
-                className="w-full text-xs text-gray-400 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-[9px] file:font-bold file:uppercase file:tracking-widest file:bg-primaria file:text-white hover:file:bg-secundaria file:cursor-pointer transition-all bg-gray-50 border border-gray-100 rounded-2xl"
-              />
-              <input type="hidden" {...register('image_url')} />
-              
-              {watch('image_url') && (
-                 <div className="mt-4 w-24 h-24 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                    <img src={watch('image_url')} alt="Preview" className="w-full h-full object-cover" />
-                 </div>
-              )}
+               <div className="flex items-center justify-between mb-2 px-1">
+                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest font-sans">
+                    Galeria de Fotos (Arquivo Local)
+                 </label>
+                 {uploadingImage && <span className="text-[10px] text-primaria font-bold uppercase tracking-widest animate-pulse">Enviando...</span>}
+               </div>
+
+               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                 {[
+                   { field: 'image_url', label: 'Capa Principal' },
+                   { field: 'image_2', label: 'Foto Extra 2' },
+                   { field: 'image_3', label: 'Foto Extra 3' },
+                   { field: 'image_4', label: 'Foto Extra 4' },
+                 ].map((item, idx) => {
+                   const currUrl = watch(item.field);
+                   return (
+                     <div key={item.field} className="relative">
+                        {currUrl ? (
+                          <div className="aspect-[4/5] rounded-2xl overflow-hidden border border-gray-200 shadow-sm relative group bg-gray-50">
+                             <img src={currUrl} alt={`Preview ${idx+1}`} className="w-full h-full object-cover group-hover:opacity-40 transition-all" />
+                             <button type="button" onClick={() => setValue(item.field, '')} className="absolute inset-0 m-auto w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-xl">
+                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                             </button>
+                          </div>
+                        ) : (
+                          <div className="aspect-[4/5] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center relative hover:bg-gray-100 hover:border-primaria/50 transition-all cursor-pointer">
+                             <span className="text-2xl mb-2 opacity-30">📷</span>
+                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest text-center px-2">{item.label}</span>
+                             <input 
+                               type="file" 
+                               accept="image/*"
+                               onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                     setUploadingImage(true);
+                                     try {
+                                        const url = await productService.uploadImage(file);
+                                        setValue(item.field, url);
+                                     } catch (err: any) {
+                                        alert("Erro ao enviar imagem: " + (err.message || ''));
+                                     } finally {
+                                        setUploadingImage(false);
+                                     }
+                                  }
+                               }}
+                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                             />
+                          </div>
+                        )}
+                        <input type="hidden" {...register(item.field)} />
+                     </div>
+                   );
+                 })}
+               </div>
             </div>
 
             <div className="flex items-center gap-6 p-5 bg-gray-50 rounded-3xl border border-gray-100 shadow-inner">
