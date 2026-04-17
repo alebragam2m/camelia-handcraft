@@ -37,6 +37,7 @@ export default function ProductsModule() {
   const [activeLine, setActiveLine] = useState<string | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Pillar 2: TanStack Query - Fetching
   const { data: products = [], isLoading: loadingProducts, error: errorLoad } = useQuery({
@@ -84,8 +85,12 @@ export default function ProductsModule() {
     setIsCreating(true);
   };
 
+  // Filter & Sort A-Z
+  const sortedProducts = [...products].sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  const filteredProducts = sortedProducts.filter(p => (p.nome || '').toLowerCase().includes(searchQuery.toLowerCase()));
+
   // Group by category with Fallback (Auditoria de Incongruência)
-  const byCategory = products.reduce((acc, p) => {
+  const byCategory = filteredProducts.reduce((acc, p) => {
     let cat = p.category || 'Diversos';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(p);
@@ -112,6 +117,20 @@ export default function ProductsModule() {
           <div className="p-20 text-center animate-pulse">
             <p className="text-secundaria font-serif italic text-xl">Sincronizando Catálogo Profissional...</p>
           </div>
+        )}
+
+        {/* BARRA DE PESQUISA */}
+        {!isCreating && (
+           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 flex items-center mb-6">
+              <span className="pl-4 text-gray-400">🔍</span>
+              <input 
+                type="text" 
+                placeholder="Procurar peças cadastradas..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full p-3 outline-none text-secundaria font-bold placeholder-gray-300"
+              />
+           </div>
         )}
 
         {/* VISTA PRINCIPAL: CATEGORIAS */}
@@ -159,7 +178,7 @@ export default function ProductsModule() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {(activeLine === 'Ver Tudo' ? products : productsInLine).map(prod => (
+              {(activeLine === 'Ver Tudo' ? filteredProducts : productsInLine).map(prod => (
                 <div key={prod.id} onClick={() => openEditMode(prod)} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer group hover:shadow-lg transition-all">
                   <div className="w-full h-40 bg-gray-50 flex items-center justify-center text-4xl border-b overflow-hidden">
                     {prod.image_url ? <img src={prod.image_url} alt={prod.nome} className="w-full h-full object-cover group-hover:scale-105 transition-all" /> : CATEGORY_ICONS[activeLine || 'Diversos']}

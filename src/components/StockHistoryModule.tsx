@@ -21,6 +21,7 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ change_type: 'Entrada', quantity: '', reason: '' });
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: logs = [], isLoading: loadingLogs } = useQuery({
     queryKey: ['stock-logs', selectedProduct?.id],
@@ -60,6 +61,10 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
   const totalAFazer = produtos.reduce((acc, p) => acc + (p.stock_to_make || 0), 0);
   const valorEstocado = produtos.reduce((acc, p) => acc + (((p.stock || 0) + (p.stock_to_make || 0)) * Number(p.cost || 0)), 0);
 
+  const processedProducts = [...produtos]
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+    .filter(p => (p.nome || '').toLowerCase().includes(searchQuery.toLowerCase()));
+
   return (
     <ErrorBoundary>
       <div className="animate-fade-in-down space-y-6">
@@ -78,13 +83,24 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
           </div>
         </div>
 
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 flex items-center">
+            <span className="pl-4 text-gray-400">🔍</span>
+            <input 
+              type="text" 
+              placeholder="Pesquisar produto no estoque..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full p-3 outline-none text-secundaria font-bold placeholder-gray-300"
+            />
+        </div>
+
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 border-b text-gray-500 font-bold uppercase tracking-widest text-[9px]">
               <tr><th className="p-5 pl-8">Produto / Arte</th><th className="p-5 text-center">Pronto</th><th className="p-5 text-center">A Fazer</th><th className="p-5 text-right pr-8">Auditoria</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {produtos.map(p => (
+              {processedProducts.map(p => (
                 <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="p-5 pl-8 font-bold text-secundaria">{p.nome}</td>
                   <td className="p-5 text-center">
