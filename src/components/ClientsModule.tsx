@@ -1,19 +1,27 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clientService } from '../services/clientService';
+import { saleService } from '../services/saleService';
 import { formatCurrency } from '../utils/formatCurrency';
 import type { Client } from '../types/supabase';
+import ClientProfileView from './ClientProfileView';
 
 const ACQUISITION_CHANNELS = ['Instagram', 'WhatsApp', 'Indicação', 'Site', 'Outro'];
 
 export default function ClientsModule() {
   const queryClient = useQueryClient();
   const [selectedClient, setSelectedClient] = useState<Partial<Client> | null>(null);
+  const [activeProfileClient, setActiveProfileClient] = useState<Client | null>(null);
   const [form, setForm] = useState<Partial<Client>>({});
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients'],
     queryFn: () => clientService.getAll(),
+  });
+
+  const { data: sales = [] } = useQuery({
+    queryKey: ['sales'],
+    queryFn: () => saleService.getAll(),
   });
 
   const saveMutation = useMutation({
@@ -70,8 +78,16 @@ export default function ClientsModule() {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        
+        {activeProfileClient ? (
+          <ClientProfileView 
+            client={activeProfileClient} 
+            sales={sales} 
+            onBack={() => setActiveProfileClient(null)} 
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cliente</th>
@@ -86,8 +102,12 @@ export default function ClientsModule() {
                   <td colSpan={4} className="px-6 py-12 text-center text-gray-400 italic text-sm">Nenhum cliente cadastrado ainda.</td>
                 </tr>
               ) : (
-                clients.map((client: any) => (
-                  <tr key={client.id} className="hover:bg-gray-50/50 transition-colors group">
+                clients.map((client: any) => {
+                  const clientSales = sales.filter((s:any) => s.client_id === client.id);
+                  const clientLTV = clientSales.reduce((acc:number, s:any) => acc + (Number(s.total_amount) || 0), 0);
+
+                  return (
+                  <tr key={client.id} onClick={() => setActiveProfileClient(client)} className="hover:bg-gray-50/50 transition-colors group cursor-pointer">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primaria/10 flex items-center justify-center text-primaria font-bold">
@@ -104,23 +124,23 @@ export default function ClientsModule() {
                       <p className="text-[9px] text-gray-400 uppercase font-bold tracking-tight">{client.phone || 'Sem telefone'}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-secundaria">—</p>
-                      <p className="text-[9px] text-gray-400 uppercase font-bold">LTV (Lifetime Value)</p>
+                      <p className="text-sm font-bold text-secundaria">{formatCurrency(clientLTV)}</p>
+                      <p className="text-[9px] text-gray-400 uppercase font-bold">LTV ({clientSales.length} compras)</p>
                     </td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => openModal(client)}
+                        onClick={(e) => { e.stopPropagation(); openModal(client); }}
                         className="bg-gray-100 px-4 py-2 rounded-lg text-[9px] font-bold text-gray-500 uppercase tracking-widest group-hover:bg-secundaria group-hover:text-white transition-all"
                       >
-                        Detalhes do VIP ❯
+                        Ficha / Editar
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
+                )))}
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Modal de edição */}
