@@ -58,6 +58,12 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
   const category = watch('category');
   const isInsumo = watch('is_insumo');
   const [uploadingImage, setUploadingImage] = React.useState(false);
+  const availableCollections = ["Natal", "Círio", "Páscoa", "Provence", "Diversos", "Frutas e Legumes", "Flores"];
+  const [selectedCols, setSelectedCols] = React.useState<string[]>(() => {
+    const raw = product?.colecao || '';
+    if (raw === 'Sem linha / Coleção' || !raw) return [];
+    return raw.split(',').map((s: string) => s.trim()).filter(Boolean);
+  });
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fadeIn duration-300">
@@ -132,23 +138,33 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Linha / Coleção</label>
-                <select 
-                  {...register('colecao')}
-                  className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all appearance-none cursor-pointer"
-                >
-                  <option value="">Sem Coleção</option>
-                  <option value="Natal">Natal</option>
-                  <option value="Círio">Círio</option>
-                  <option value="Páscoa">Páscoa</option>
-                  <option value="Provence">Provence</option>
-                  <option value="Diversos">Diversos</option>
-                  <option value="Frutas e Legumes">Frutas e Legumes</option>
-                  <option value="Flores">Flores</option>
-                </select>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 shadow-inner">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4 px-1 font-sans">Linha / Coleções Especiais (Pode marcar várias)</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableCollections.map(c => {
+                     const isSelected = selectedCols.includes(c);
+                     return (
+                        <button
+                           type="button"
+                           key={c}
+                           onClick={() => {
+                              const next = isSelected ? selectedCols.filter(x => x !== c) : [...selectedCols, c];
+                              setSelectedCols(next);
+                              setValue('colecao', next.length > 0 ? next.join(', ') : 'Sem linha / Coleção');
+                           }}
+                           className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border ${isSelected ? 'bg-secundaria text-white border-secundaria shadow-md' : 'bg-white text-gray-400 border-gray-200 hover:border-secundaria/50 hover:text-secundaria'}`}
+                        >
+                           {c}
+                        </button>
+                     )
+                  })}
+                </div>
+                <input type="hidden" {...register('colecao')} />
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Categoria Principal</label>
                 <select 

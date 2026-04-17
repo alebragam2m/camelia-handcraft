@@ -68,11 +68,16 @@ export const productService = {
     
     if (error) throw error;
 
-    // Redução para garantir uma imagem por coleção única
+    // Redução para garantir uma imagem por coleção única, separando múltiplas marcações (ex: "Natal, Provence")
     const unique = data.reduce((acc, current) => {
-      if (!acc[current.colecao]) {
-        acc[current.colecao] = current.image_url;
-      }
+      if (!current.colecao) return acc;
+      
+      const collections = current.colecao.split(',').map(c => c.trim()).filter(Boolean);
+      collections.forEach(col => {
+         if (!acc[col]) {
+            acc[col] = current.image_url;
+         }
+      });
       return acc;
     }, {});
 

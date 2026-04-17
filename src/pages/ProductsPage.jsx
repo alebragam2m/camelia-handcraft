@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { productService } from '../services/productService';
 import { useCart } from '../context/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
@@ -10,6 +10,10 @@ function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
+  const location = useLocation();
+
+  // Lê a coleção da URL (ex: ?col=Páscoa)
+  const queryCol = new URLSearchParams(location.search).get('col');
 
   async function load() {
     try {
@@ -33,7 +37,18 @@ function ProductsPage() {
     return unsubscribe; // limpa o canal ao sair da página
   }, []);
 
-  const displayed = products.filter(p => p.show_on_site !== false);
+  const displayed = products.filter(p => {
+    // 1. Ocultar inativos
+    if (p.show_on_site === false) return false;
+    
+    // 2. Se houver filtro de coleção, garantir que o produto possui tal coleção na sua lista estourada por vírgula
+    if (queryCol) {
+       const colsDoProduto = (p.colecao || '').split(',').map(s => s.trim());
+       if (!colsDoProduto.includes(queryCol)) return false;
+    }
+    
+    return true;
+  });
 
   if (loading) {
     return (
@@ -45,7 +60,9 @@ function ProductsPage() {
 
   return (
     <div className="p-10">
-      <h1 className="text-3xl font-serif mb-10">Nossas Peças</h1>
+      <h1 className="text-3xl font-serif mb-10">
+         {queryCol ? `Coleção: ${queryCol}` : 'Nossas Peças'}
+      </h1>
       {displayed.length === 0 ? (
         <p className="text-gray-400">Nenhum produto disponível no momento.</p>
       ) : (
