@@ -56,8 +56,9 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
     });
   };
 
-  const totalEmAcervo = produtos.reduce((acc, p) => acc + (p.stock || 0), 0);
-  const valorEstocado = produtos.reduce((acc, p) => acc + ((p.stock || 0) * Number(p.cost || 0)), 0);
+  const totalPronto = produtos.reduce((acc, p) => acc + (p.stock || 0), 0);
+  const totalAFazer = produtos.reduce((acc, p) => acc + (p.stock_to_make || 0), 0);
+  const valorEstocado = produtos.reduce((acc, p) => acc + (((p.stock || 0) + (p.stock_to_make || 0)) * Number(p.cost || 0)), 0);
 
   return (
     <ErrorBoundary>
@@ -67,16 +68,20 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
             <h2 className="text-3xl font-serif font-bold text-secundaria mb-1 flex items-center gap-3">PCP & Inventário <span>📦</span></h2>
             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed">Controle de Saídas/Entradas (Sincronização Ativa)</p>
           </div>
-          <div className="text-right border-l pl-6 border-gray-100">
-            <p className="text-2xl font-serif font-bold text-secundaria">{totalEmAcervo} <span className="text-sm font-sans text-gray-400">peças</span></p>
-            <p className="text-[10px] text-orange-500 uppercase font-bold tracking-widest mt-1">~{formatCurrency(valorEstocado)} imobilizados</p>
+          <div className="text-right border-l pl-6 border-gray-100 flex flex-col items-end">
+            <div className="flex items-center gap-4 mb-1">
+              <p className="text-2xl font-serif font-bold text-secundaria" title="Estoque Pronto">{totalPronto} <span className="text-sm font-sans text-gray-400">prontas</span></p>
+              <span className="text-gray-300">|</span>
+              <p className="text-2xl font-serif font-bold text-purple-600" title="Estoque a Fazer">{totalAFazer} <span className="text-sm font-sans text-purple-300">a fazer</span></p>
+            </div>
+            <p className="text-[10px] text-orange-500 uppercase font-bold tracking-widest">~{formatCurrency(valorEstocado)} imobilizados (total)</p>
           </div>
         </div>
 
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 border-b text-gray-500 font-bold uppercase tracking-widest text-[9px]">
-              <tr><th className="p-5 pl-8">Produto / Arte</th><th className="p-5 text-center">Saldo</th><th className="p-5 text-right pr-8">Auditoria</th></tr>
+              <tr><th className="p-5 pl-8">Produto / Arte</th><th className="p-5 text-center">Pronto</th><th className="p-5 text-center">A Fazer</th><th className="p-5 text-right pr-8">Auditoria</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {produtos.map(p => (
@@ -92,6 +97,15 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
                     }`}>
                       {Number(p.stock) === 0 ? '🔴' : Number(p.stock) <= (p.min_stock ?? 5) ? '🟡' : '🟢'} {p.stock}
                     </span>
+                  </td>
+                  <td className="p-5 text-center">
+                     {Number(p.stock_to_make) > 0 ? (
+                        <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-lg font-bold text-sm border border-purple-100/50">
+                          {p.stock_to_make} un.
+                        </span>
+                     ) : (
+                        <span className="text-gray-300 font-bold">-</span>
+                     )}
                   </td>
                   <td className="p-5 text-right pr-8">
                     <button onClick={() => setSelectedProduct(p)} className="text-[10px] bg-secundaria text-white px-4 py-2 rounded-lg font-bold uppercase tracking-widest hover:bg-black transition-all">Histórico PCP</button>
@@ -135,9 +149,15 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
                 </div>
 
                 <div className="w-full md:w-80 bg-gray-50 p-8 flex flex-col justify-center">
-                  <div className="bg-secundaria text-white p-6 rounded-2xl shadow-lg mb-8 text-center border-b-[4px] border-primaria">
-                    <p className="text-[9px] uppercase tracking-widest text-gray-400 font-bold mb-1">Acervo Físico</p>
-                    <p className="text-5xl font-serif font-bold">{selectedProduct.stock}</p>
+                  <div className="flex gap-4 mb-8">
+                     <div className="flex-1 bg-secundaria text-white p-4 rounded-2xl shadow-lg text-center border-b-[4px] border-primaria flex flex-col items-center justify-center">
+                       <p className="text-[8px] uppercase tracking-widest text-gray-400 font-bold mb-1">Pronto</p>
+                       <p className="text-4xl font-serif font-bold">{selectedProduct.stock}</p>
+                     </div>
+                     <div className="flex-1 bg-white border border-purple-100 text-purple-700 p-4 rounded-2xl shadow-sm text-center border-b-[4px] border-b-purple-300 flex flex-col items-center justify-center">
+                       <p className="text-[8px] uppercase tracking-widest text-purple-400 font-bold mb-1">A Fazer</p>
+                       <p className="text-4xl font-serif font-bold">{selectedProduct.stock_to_make || 0}</p>
+                     </div>
                   </div>
 
                   {!isAdjustModalOpen ? (

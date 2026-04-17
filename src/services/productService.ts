@@ -14,6 +14,7 @@ export const productService = {
       ...p,
       price: p.price ?? 0,
       stock: p.stock ?? 0,
+      stock_to_make: p.stock_to_make ?? 0,
       show_on_site: p.show_on_site ?? true,
     }));
   },
@@ -65,6 +66,7 @@ export const productService = {
       ...data,
       price: data.price ?? 0,
       stock: data.stock ?? 0,
+      stock_to_make: data.stock_to_make ?? 0,
       show_on_site: data.show_on_site ?? true,
     };
   },
@@ -76,6 +78,7 @@ export const productService = {
       price: Number(data.price) || 0,
       cost: Number(data.cost) || 0,
       stock: Number(data.stock) || 0,
+      stock_to_make: Number(data.stock_to_make) || 0,
       weight_kg: Number(data.weight_kg) || 0,
       supplier_id: data.supplier_id || null,
       show_on_site: data.show_on_site ?? true,

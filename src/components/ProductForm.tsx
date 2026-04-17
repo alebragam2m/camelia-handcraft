@@ -26,6 +26,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
       price: product?.price || 0,
       cost: product?.cost || 0,
       stock: product?.stock || 0,
+      stock_to_make: product?.stock_to_make || 0,
       category: product?.category || 'Diversos',
       colecao: product?.colecao || '',
       description: product?.description || '',
@@ -99,26 +100,33 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
               {errors.nome && <p className="text-red-500 text-[10px] font-bold mt-1 px-1 uppercase">{String(errors.nome.message)}</p>}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans truncate">Venda (R$)</label>
+                <label className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans truncate">Venda (R$)</label>
                 <input 
                   type="number" step="0.01" {...register('price')}
                   className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans truncate">Custo (R$)</label>
+                <label className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans truncate">Custo (R$)</label>
                 <input 
                   type="number" step="0.01" {...register('cost')}
                   className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans truncate">Estoque</label>
+                <label className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans truncate">Qtd. Pronto</label>
                 <input 
                   type="number" {...register('stock')}
                   className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria font-bold outline-none focus:border-primaria focus:bg-white transition-all shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-[8px] font-bold text-purple-400 uppercase tracking-widest mb-2 px-1 font-sans truncate">A Fazer</label>
+                <input 
+                  type="number" {...register('stock_to_make')}
+                  className="w-full p-4 bg-purple-50/50 rounded-2xl border border-purple-100 text-purple-700 font-bold outline-none focus:border-purple-300 focus:bg-purple-50 transition-all shadow-inner [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                 />
               </div>
             </div>
