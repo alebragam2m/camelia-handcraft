@@ -8,7 +8,7 @@ const ACQUISITION_CHANNELS = ['Instagram', 'WhatsApp', 'Indicação', 'Site', 'O
 
 export default function ClientsModule() {
   const queryClient = useQueryClient();
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Partial<Client> | null>(null);
   const [form, setForm] = useState<Partial<Client>>({});
 
   const { data: clients = [], isLoading } = useQuery({
@@ -17,7 +17,7 @@ export default function ClientsModule() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (payload: Partial<Client>) => clientService.save(payload, selectedClient!.id),
+    mutationFn: (payload: Partial<Client>) => clientService.save(payload, selectedClient?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       setSelectedClient(null);
@@ -25,10 +25,11 @@ export default function ClientsModule() {
     onError: (err: Error) => alert(`Erro ao salvar: ${err.message}`),
   });
 
-  const openModal = (client: Client) => {
-    setSelectedClient(client);
-    setForm({
-      full_name: client.full_name,
+  const openModal = (client?: Client) => {
+    if (client) {
+      setSelectedClient(client);
+      setForm({
+        full_name: client.full_name,
       email: client.email,
       phone: client.phone,
       is_vip: client.is_vip,
@@ -42,6 +43,10 @@ export default function ClientsModule() {
       acquisition_channel: client.acquisition_channel,
       internal_notes: client.internal_notes,
     });
+    } else {
+      setSelectedClient({});
+      setForm({ is_vip: false, full_name: '', phone: '' });
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -53,6 +58,16 @@ export default function ClientsModule() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 flex justify-between items-center">
+        <div>
+           <h2 className="text-3xl font-serif font-bold text-secundaria mb-1 flex items-center gap-3">Rede de Clientes <span>🤝</span></h2>
+           <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed">Gerenciador de Carteira e Cadastros VIPs</p>
+        </div>
+        <button onClick={() => openModal()} className="bg-secundaria text-white px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-black transition-all shadow-md">
+           + Novo Cliente
+        </button>
+      </div>
+
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -116,7 +131,7 @@ export default function ClientsModule() {
             <div className="bg-secundaria text-white px-8 py-6 flex justify-between items-center sticky top-0 z-10">
               <div>
                 <p className="text-[9px] uppercase tracking-[4px] text-primaria font-bold mb-1">CRM — Ficha do Cliente</p>
-                <h3 className="font-serif font-bold text-xl">{selectedClient.full_name}</h3>
+                <h3 className="font-serif font-bold text-xl">{selectedClient.id ? selectedClient.full_name : 'Novo Cadastro VIP'}</h3>
               </div>
               <button onClick={() => setSelectedClient(null)} className="text-white/50 hover:text-white font-bold text-lg">✕</button>
             </div>
@@ -127,9 +142,10 @@ export default function ClientsModule() {
                 {/* ── Dados existentes ─────────────────────────────── */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Nome Completo</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37]">Nome Completo *</label>
                     <input
                       type="text"
+                      required
                       value={form.full_name || ''}
                       onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-secundaria outline-none focus:border-primaria transition-colors"
@@ -145,9 +161,10 @@ export default function ClientsModule() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Telefone / WhatsApp</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37]">Telefone / WhatsApp *</label>
                     <input
                       type="text"
+                      required
                       value={form.phone || ''}
                       onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-secundaria outline-none focus:border-primaria transition-colors"
