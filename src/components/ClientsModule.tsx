@@ -136,7 +136,9 @@ export default function ClientsModule() {
                       </button>
                     </td>
                   </tr>
-                )))}
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
