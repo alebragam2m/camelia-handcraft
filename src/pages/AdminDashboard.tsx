@@ -226,7 +226,7 @@ export default function AdminDashboard() {
               {activeTab === 'fornecedores' && <SuppliersModule />}
               {activeTab === 'usuarios' && canAccessFullAdmin && <UsersModule />}
               
-              {activeTab === 'vendas' && <SalesModule />}
+              {activeTab === 'vendas' && <SalesModule isAdmin={canAccessFullAdmin} />}
               {activeTab === 'clientes' && <ClientsModule />}
             </div>
           </main>

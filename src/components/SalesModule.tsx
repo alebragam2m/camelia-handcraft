@@ -1,12 +1,37 @@
-import { useQuery } from '@tanstack/react-query';
+import React from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { saleService } from '../services/saleService';
 import { formatCurrency } from '../utils/formatCurrency';
 
-export default function SalesModule() {
+interface SalesModuleProps {
+  isAdmin?: boolean;
+}
+
+export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
+  const queryClient = useQueryClient();
+
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ['sales'],
     queryFn: () => saleService.getAll(),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => saleService.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+    onError: (err: Error) => alert(`Erro ao apagar: ${err.message}`),
+  });
+
+  const handleDelete = (e: React.MouseEvent, sale: any) => {
+    e.stopPropagation();
+    const clientName = sale.clients?.full_name || 'Consumidor Final';
+    const valor = formatCurrency(sale.total_amount);
+    const data = new Date(sale.created_at).toLocaleDateString('pt-BR');
+    if (window.confirm(`⚠️ Apagar venda permanentemente?\n\nCliente: ${clientName}\nValor: ${valor}\nData: ${data}\n\nEssa ação é irreversível.`)) {
+      deleteMutation.mutate(sale.id);
+    }
+  };
 
   if (isLoading) return <div className="p-12 text-center animate-pulse text-gray-400 font-bold uppercase tracking-widest text-[10px]">Carregando Vendas...</div>;
 
@@ -31,7 +56,7 @@ export default function SalesModule() {
                 </tr>
               ) : (
                 sales.map((sale: any) => (
-                  <tr key={sale.id} className="hover:bg-gray-50/50 transition-colors">
+                  <tr key={sale.id} className="hover:bg-gray-50/50 transition-colors group">
                     <td className="px-6 py-4">
                       <p className="text-xs font-bold text-secundaria">{new Date(sale.created_at).toLocaleDateString('pt-BR')}</p>
                       <p className="text-[9px] text-gray-400 uppercase font-medium">{new Date(sale.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
@@ -57,7 +82,21 @@ export default function SalesModule() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <button className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Ver Recibo ❯</button>
+                      <div className="flex items-center gap-3">
+                        <button className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Ver Recibo ❯</button>
+
+                        {/* BOTÃO DE EXCLUSÃO — SOMENTE ADMIN (nível 4) */}
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => handleDelete(e, sale)}
+                            disabled={deleteMutation.isPending}
+                            className="text-[9px] font-bold text-red-300 uppercase tracking-widest hover:text-red-500 transition-colors disabled:opacity-40 border border-red-100 px-2 py-0.5 rounded-lg hover:border-red-300 hover:bg-red-50"
+                            title="Apagar venda (Admin)"
+                          >
+                            {deleteMutation.isPending ? '...' : '🗑 Apagar'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

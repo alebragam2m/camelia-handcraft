@@ -33,5 +33,15 @@ export const saleService = {
     }
     
     return data;
-  }
+  },
+
+  async remove(id: string): Promise<void> {
+    // 1. Apagar os itens filhos primeiro (foreign key)
+    const { error: itemsError } = await supabase.from('sale_items').delete().eq('sale_id', id);
+    if (itemsError) throw new Error(`Erro ao apagar itens da venda: ${itemsError.message}`);
+
+    // 2. Apagar a venda
+    const { error } = await supabase.from('sales').delete().eq('id', id);
+    if (error) throw new Error(`Erro ao apagar venda: ${error.message}`);
+  },
 };
