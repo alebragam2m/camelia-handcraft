@@ -22,7 +22,7 @@ export const stockService = {
    */
   async adjust(productId: string, quantity: number, type: 'ENTRADA' | 'SAIDA', notes: string = ''): Promise<any> {
     const { data, error } = await supabase.rpc('handle_inventory_adjustment', {
-      p_product_id: parseInt(productId),
+      p_product_id: productId,  // UUID string — NÃO converter para int
       p_quantity: quantity,
       p_type: type,
       p_notes: notes,
