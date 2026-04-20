@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { saleService } from '../services/saleService';
 import { formatCurrency } from '../utils/formatCurrency';
+import ManualSaleModal from './ManualSaleModal';
 
 interface SalesModuleProps {
   isAdmin?: boolean;
@@ -9,6 +10,7 @@ interface SalesModuleProps {
 
 export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
   const queryClient = useQueryClient();
+  const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
 
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ['sales'],
@@ -37,6 +39,24 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+
+      {/* MODAL DE NOVA VENDA */}
+      {isNewSaleOpen && <ManualSaleModal onClose={() => setIsNewSaleOpen(false)} />}
+
+      {/* CABEÇALHO COM BOTÃO */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-serif font-bold text-secundaria mb-0.5 flex items-center gap-2">Livro de Vendas <span>🧾</span></h2>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{sales.length} registro{sales.length !== 1 ? 's' : ''} encontrado{sales.length !== 1 ? 's' : ''}</p>
+        </div>
+        <button
+          onClick={() => setIsNewSaleOpen(true)}
+          className="bg-secundaria text-white px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-black transition-all shadow-md"
+        >
+          + Nova Venda
+        </button>
+      </div>
+
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
