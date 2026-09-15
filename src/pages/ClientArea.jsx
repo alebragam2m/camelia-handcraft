@@ -32,26 +32,26 @@ function ClientArea() {
       .select('access_level')
       .eq('auth_user_id', user.id)
       .single();
-    
+
     if (adminRecord) setIsAdmin(true);
 
-    // Fetch client record
+    // Fetch client record — lista explícita de colunas: exclui internal_notes/is_vip
     const { data: client } = await supabase
       .from('clients')
-      .select('*')
+      .select('id, full_name, email, phone, cep, address, address_number, neighborhood, city, state')
       .eq('email', user.email)
       .single();
 
     if (client) {
       setClientData(client);
-      
+
       // Fetch orders
       const { data: saleData } = await supabase
         .from('sales')
-        .select('*')
+        .select('id, status, total_amount, created_at, shipping_address')
         .eq('client_id', client.id)
         .order('created_at', { ascending: false });
-      
+
       if (saleData) setOrders(saleData);
     }
     setLoading(false);
@@ -65,15 +65,11 @@ function ClientArea() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    const updates = {
-      full_name: formData.get('nome'),
-      phone: formData.get('telefone'),
-    };
 
-    const { error } = await supabase
-      .from('clients')
-      .update(updates)
-      .eq('id', clientData.id);
+    const { error } = await supabase.rpc('update_own_client_profile', {
+      p_full_name: formData.get('nome'),
+      p_phone: formData.get('telefone'),
+    });
 
     if (error) alert("Erro ao atualizar!");
     else alert("Dados atualizados com sucesso!");

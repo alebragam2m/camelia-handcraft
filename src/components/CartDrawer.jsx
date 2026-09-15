@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 
 export default function CartDrawer() {
-  const { cartItems, isCartOpen, setIsCartOpen, removeFromCart, updateQty, totalPrice, totalItems, clearCart } = useCart();
+  const { cartItems, isCartOpen, setIsCartOpen, removeFromCart, updateQty, totalPrice, totalItems, catalogReady } = useCart();
 
   if (!isCartOpen) return null;
 
@@ -33,6 +33,7 @@ export default function CartDrawer() {
           </button>
         </div>
 
+        {!catalogReady && <p role="status" className="p-4 text-sm text-amber-800">Aguardando atualização de preços e disponibilidade.</p>}
         {/* Lista de Itens */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4">
           {cartItems.length === 0 ? (
@@ -56,6 +57,7 @@ export default function CartDrawer() {
                   <h4 className="font-bold text-secundaria text-sm leading-tight mb-1 truncate">{item.nome}</h4>
                   <p className="text-primaria font-bold text-base">{formatCurrency(item.price)}</p>
 
+                  {item.unavailable && <p role="alert" className="text-xs text-red-700">Produto ou quantidade indisponível. Ajuste ou remova este item.</p>}
                   {/* Controle de Quantidade */}
                   <div className="flex items-center gap-3 mt-3">
                     <button

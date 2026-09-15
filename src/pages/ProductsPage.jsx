@@ -1,58 +1,26 @@
-import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { productService } from '../services/productService';
 import { useCart } from '../context/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
-
+import { useCatalog } from '../hooks/useCatalog';
+import CatalogFeedback from '../components/CatalogFeedback';
 const WHATSAPP_NUMBER = '5591991145232';
-
 function ProductsPage() {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: products = [], isPending: loading, error } = useCatalog();
   const { addToCart } = useCart();
   const location = useLocation();
-
-  // Lê a coleção da URL (ex: ?col=Páscoa)
-  const queryCol = new URLSearchParams(location.search).get('col');
-
-  async function load() {
-    try {
-      const data = await productService.getAll();
-      setProducts(data);
-    } catch (err) {
-      console.error('Erro ao carregar produtos:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-
-    // Escuta mudanças em tempo real no banco
-    const unsubscribe = productService.subscribeToChanges(() => {
-      load(); // recarrega quando qualquer produto mudar
-    });
-
-    return unsubscribe; // limpa o canal ao sair da página
-  }, []);
-
-  const displayed = products.filter(p => {
-    // 1. Ocultar inativos
-    if (p.show_on_site === false) return false;
-    
-    // 2. Se houver filtro de coleção, garantir que o produto possui tal coleção na sua lista estourada por vírgula
-    if (queryCol) {
-       const colsDoProduto = (p.colecao || '').split(',').map(s => s.trim());
-       if (!colsDoProduto.includes(queryCol)) return false;
-    }
-    
-    return true;
+  const params = new URLSearchParams(location.search);
+  const queryCol = params.get('col');
+  const queryCategory = params.get('cat');
+  const search = (params.get('search') || '').trim().toLocaleLowerCase('pt-BR');
+  const displayed = products.filter(product => {
+    if (queryCol && !(product.colecao || '').split(',').map(value => value.trim()).includes(queryCol)) return false;
+    if (queryCategory && product.category !== queryCategory) return false;
+    return !search || (product.nome + ' ' + (product.description || '')).toLocaleLowerCase('pt-BR').includes(search);
   });
-
   if (loading) {
     return (
       <div className="p-10 text-center text-gray-400">
+      <CatalogFeedback error={error} />
         Carregando peças...
       </div>
     );
@@ -60,6 +28,7 @@ function ProductsPage() {
 
   return (
     <div className="p-10">
+      <CatalogFeedback error={error} />
       <h1 className="text-3xl font-serif mb-10">
          {queryCol ? `Coleção: ${queryCol}` : 'Nossas Peças'}
       </h1>

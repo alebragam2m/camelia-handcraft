@@ -1,28 +1,13 @@
-import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { productService } from '../services/supabaseService';
-
+import { useCatalog } from '../hooks/useCatalog';
+import { getCollections } from '../lib/catalog';
+import CatalogFeedback from '../components/CatalogFeedback';
 function Collections() {
-  const [collections, setCollections] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCols = async () => {
-      try {
-        const data = await productService.getUniqueCollections();
-        // Filtra "Sem linha / Coleção" para limpeza visual
-        setCollections(data.filter(c => c.nome !== 'Sem linha / Coleção'));
-      } catch (err) {
-        console.error('Erro ao buscar coleções:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCols();
-  }, []);
-
+  const { data: products = [], isPending: loading, error } = useCatalog();
+  const collections = getCollections(products);
   return (
     <div className="bg-fundo min-h-screen relative overflow-hidden">
+      <CatalogFeedback error={error} />
       {/* Subtle body cross pattern */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '30px 30px'}}></div>
 

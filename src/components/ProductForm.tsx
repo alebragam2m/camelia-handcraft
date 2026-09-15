@@ -10,9 +10,10 @@ import getCroppedImg from '../utils/cropImage';
 interface ProductFormProps {
   product?: any; 
   onClose: () => void;
+  initialCategory?: string;
 }
 
-export default function ProductForm({ product, onClose }: ProductFormProps) {
+export default function ProductForm({ product, onClose, initialCategory }: ProductFormProps) {
   const queryClient = useQueryClient();
 
   const {
@@ -29,7 +30,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
       cost: product?.cost || 0,
       stock: product?.stock || 0,
       stock_to_make: product?.stock_to_make || 0,
-      category: product?.category || 'Diversos',
+      category: product?.category || initialCategory || 'Diversos',
       colecao: product?.colecao || '',
       description: product?.description || '',
       image_url: product?.image_url || '',
@@ -40,6 +41,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
       is_preorder: product?.is_preorder || false,
       is_insumo: product?.is_insumo || false,
       technical_notes: product?.technical_notes || '',
+      insumos_json: product?.insumos_json || [],
       measure_cm: product?.measure_cm || '',
       weight_kg: product?.weight_kg || 0,
       supplier_id: product?.supplier_id || null,
@@ -53,6 +55,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
     mutationFn: (data: any) => productService.save(data, product?.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
       onClose();
     },
   });
@@ -74,7 +77,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
   const [croppedAreaPixels, setCroppedAreaPixels] = React.useState(null);
   const [isCropping, setIsCropping] = React.useState(false);
 
-  const onCropComplete = React.useCallback((croppedArea: any, croppedAreaPixels: any) => {
+  const onCropComplete = React.useCallback((_croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
@@ -129,6 +132,7 @@ export default function ProductForm({ product, onClose }: ProductFormProps) {
         {/* CORPO DO FORMULÁRIO (ESTÉTICA ORIGINAL) */}
         <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="overflow-y-auto p-8 space-y-6 pt-24 no-scrollbar">
           
+          {mutation.error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">Não foi possível salvar: {mutation.error.message}</p>}
           <div className="space-y-4">
             <div className="group">
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Nome da Peça *</label>

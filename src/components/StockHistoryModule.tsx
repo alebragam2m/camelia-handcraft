@@ -18,7 +18,9 @@ export interface StockHistoryModuleProps {
  */
 export default function StockHistoryModule({ produtos }: StockHistoryModuleProps) {
   const queryClient = useQueryClient();
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const selectedProduct = produtos.find(product => product.id === selectedProductId) || null;
+  const setSelectedProduct = (product: Product | null) => setSelectedProductId(product?.id || null);
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ change_type: 'Entrada', quantity: '', reason: '' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -34,6 +36,7 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
       stockService.adjust(data.productId, data.qty, data.type, data.reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
       queryClient.invalidateQueries({ queryKey: ['stock-logs', selectedProduct?.id] });
       setIsAdjustModalOpen(false);
       setAdjustForm({ change_type: 'Entrada', quantity: '', reason: '' });

@@ -1,34 +1,21 @@
 import { formatCurrency } from '../utils/formatCurrency';
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { useCart } from '../context/CartContext';
-
+import { useCatalog } from '../hooks/useCatalog';
+import CatalogFeedback from '../components/CatalogFeedback';
 function ProductDetail() {
   const { id } = useParams();
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [mainImage, setMainImage] = useState('');
+  const { data: products = [], isPending: loading, error } = useCatalog();
+  const product = products.find(item => String(item.id) === id);
+  const [selectedImage, setMainImage] = useState('');
   const [quantity, setQuantity] = useState(1);
-  
   const { addToCart } = useCart();
-
-  useEffect(() => {
-    fetchProduct();
-  }, [id]);
-
-  const fetchProduct = async () => {
-    const { data } = await supabase.from('products').select('*').eq('id', id).single();
-    if (data) {
-      setProduct(data);
-      setMainImage(data.image_url || '/logo.png');
-    }
-    setLoading(false);
-  };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-fundo text-secundaria font-serif">Carregando obra exclusiva...</div>;
-  if (!product) return <div className="min-h-screen flex items-center justify-center bg-fundo text-secundaria font-serif">A peça procurada esgotou ou foi removida.</div>;
-
+  const currentImages = product ? [product.image_url, product.image_2, product.image_3, product.image_4].filter(Boolean) : [];
+  const mainImage = currentImages.includes(selectedImage) ? selectedImage : currentImages[0] || '/logo.png';
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Carregando produto...</div>;
+  if (error) return <CatalogFeedback error={error} />;
+  if (!product) return <div className="min-h-screen flex items-center justify-center">Esta peça não está disponível na loja.</div>;
   // Reúne todas as imagens upadas ignorando nulas
   const imagesList = [product.image_url, product.image_2, product.image_3, product.image_4].filter(Boolean);
 
@@ -108,7 +95,7 @@ function ProductDetail() {
                         >−</button>
                         <span className="w-12 text-center font-bold text-secundaria">{quantity}</span>
                         <button 
-                          onClick={() => setQuantity(quantity + 1)}
+                          onClick={() => setQuantity(Math.min(Number(product.stock), quantity + 1))}
                           className="px-4 py-3 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors font-bold text-lg"
                         >+</button>
                       </div>
@@ -125,6 +112,7 @@ function ProductDetail() {
                       ) : (
                         <button 
                           onClick={handleAddToCart}
+                          disabled={quantity > Number(product.stock) || Number(product.stock) <= 0}
                           className={`flex-1 font-bold py-4 rounded-xl shadow-xl transition-all uppercase tracking-[3px] text-[11px] active:scale-95 ${product.stock <= 0 ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-900/10' : 'bg-secundaria text-white shadow-secundaria/10 hover:bg-black'}`}>
                           {product.stock <= 0 ? 'Encomendar agora' : 'Adicionar ao Carrinho'}
                         </button>

@@ -1,29 +1,16 @@
-import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { productService } from '../services/productService';
+import { useCatalog } from '../hooks/useCatalog';
+import { getCollections } from '../lib/catalog';
+import CatalogFeedback from '../components/CatalogFeedback';
 
 function Home() {
-  const [collections, setCollections] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchCols = async () => {
-      try {
-        const data = await productService.getUniqueCollections();
-        // Filtra coleções vazias ou genéricas
-        setCollections(data.filter(c => c !== 'Sem linha / Coleção' && c !== ''));
-      } catch (err) {
-        console.error('Erro ao buscar coleções:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCols();
-  }, []);
+  const { data: products = [], isPending: loading, error } = useCatalog();
+  const collections = getCollections(products);
 
   return (
     <div className="bg-fundo min-h-screen">
       
+      <CatalogFeedback error={error} />
       {/* Hero Section (Fundo Roxo Escuro Mantido conforme aprovação) */}
       <section className="relative bg-secundaria text-branco py-32 px-6 lg:px-12 flex flex-col items-center justify-center text-center overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay"></div>
@@ -61,10 +48,10 @@ function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {collections.map((colName, i) => (
+            {collections.map(({ nome: colName, img }, i) => (
               <Link to={`/produtos?col=${encodeURIComponent(colName)}`} key={i} className="group relative h-[220px] rounded-2xl overflow-hidden shadow-lg cursor-pointer transform transition duration-500 hover:-translate-y-2 translate-z-0">
                 <img 
-                   src="/logo.png" // Como é apenas o nome, usamos a logo ou uma imagem padrão
+                   src={img || '/logo.png'} // Como é apenas o nome, usamos a logo ou uma imagem padrão
                   alt={colName} 
                   className="w-full h-full object-cover transition duration-700 group-hover:scale-110 opacity-50" 
                 />

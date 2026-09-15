@@ -12,6 +12,7 @@ export interface Product {
   price: number;
   cost: number | null;
   stock: number | null;
+  stock_to_make?: number | null;
   category: string | null;
   colecao: string | null;
   description: string | null;

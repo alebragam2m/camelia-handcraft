@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { supabase } from './lib/supabase';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import DataSync from './components/DataSync';
+import SessionProvider from './components/SessionProvider';
 
 // Global View Components
 import Navbar from './components/Navbar';
@@ -35,16 +36,9 @@ function ScrollToTop() {
 }
 
 function AppContent() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // AppContent montado sem listener global de auth.
-    // Isso evita o erro crítico do Supabase: "Lock stolen by another request"
-    // e permite fluidez total entre páginas públicas e privadas.
-  }, []);
-
   return (
     <CartProvider>
+      <DataSync />
       <CartDrawer />
       <div className="App">
         <Routes>
@@ -87,7 +81,7 @@ function App() {
   return (
     <Router>
       <ScrollToTop />
-      <AppContent />
+      <SessionProvider><AppContent /></SessionProvider>
     </Router>
   );
 }

@@ -21,10 +21,8 @@ export default function PaymentSuccess() {
   const fetchSaleBySession = async () => {
     try {
       const { data, error } = await supabase
-        .from('sales')
-        .select('*, clients(full_name, email)')
-        .eq('stripe_session_id', sessionId)
-        .single();
+        .rpc('get_sale_by_session', { p_session_id: sessionId })
+        .maybeSingle();
 
       if (error) {
         console.error("Erro ao buscar venda pelo session_id:", error);
@@ -40,8 +38,7 @@ export default function PaymentSuccess() {
     }
   };
 
-  // Nome do cliente — compatível com coluna 'nome' ou 'full_name'
-  const clientName = sale?.clients?.full_name || 'Cliente';
+  const clientName = sale?.client_full_name || 'Cliente';
 
   if (loading) {
     return (

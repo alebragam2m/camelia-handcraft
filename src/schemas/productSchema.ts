@@ -8,10 +8,13 @@ import { z } from 'zod';
 
 export const productSchema = z.object({
   nome: z.string().min(3, 'O nome do produto é obrigatório para a vitrine'),
-  price: z.coerce.number({ message: 'Preço deve ser um número' }).default(0),
+  price: z.coerce.number({ message: 'Preço deve ser um número' }).nonnegative('Preço não pode ser negativo').default(0),
   cost: z.coerce.number().nullable().default(0),
-  stock: z.coerce.number().nullable().default(0),
-  stock_to_make: z.coerce.number().nullable().default(0),
+  stock: z.coerce.number().int().nonnegative().nullable().default(0),
+  stock_to_make: z.coerce.number().int().nonnegative().nullable().default(0),
+  min_stock: z.coerce.number().int().nonnegative().default(5),
+  material: z.string().nullable().default(''),
+  tags: z.string().nullable().default(''),
   category: z.string().nullable().default('Outros'),
   colecao: z.string().nullable().default('Geral'),
   description: z.string().nullable().default(''),

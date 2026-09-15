@@ -1,3 +1,4 @@
+import { priceCatalogOrder } from '../src/lib/orderPricing.js';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
@@ -8,54 +9,97 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  const { saleId, cartItems, customerEmail } = req.body;
+  const { cartItems, customer } = req.body || {};
 
-  if (!saleId || !cartItems?.length) {
-    return res.status(400).json({ error: 'Dados incompletos na requisição.' });
+  if (!Array.isArray(cartItems) || !cartItems.length || cartItems.length > 100 || cartItems.some(item => !item || item.id == null)) {
+    return res.status(400).json({ error: 'Carrinho inválido.' });
+  }
+  if (!customer || !isNonEmptyString(customer.nome) || !isNonEmptyString(customer.email) ||
+      !isNonEmptyString(customer.telefone) || !isNonEmptyString(customer.endereco) || !isNonEmptyString(customer.cidade)) {
+    return res.status(400).json({ error: 'Dados de entrega incompletos.' });
   }
 
-  // 1. Validar que a venda existe e está pendente (Fix 1)
+  // 1. Buscar catálogo autoritativo e precificar no servidor. Custo interno
+  // nunca é enviado ao carrinho — só usado aqui para gravar total_cost.
+  const { data: catalog, error: catalogError } = await supabase.from('products')
+    .select('id,nome,price,cost,stock,image_url,show_on_site,is_insumo,is_preorder')
+    .in('id', cartItems.map(item => item.id));
+  if (catalogError) return res.status(500).json({ error: 'Não foi possível validar o catálogo.' });
+
+  let pricing;
+  try { pricing = priceCatalogOrder(cartItems, catalog || []); }
+  catch (error) { return res.status(400).json({ error: error.message }); }
+
+  const catalogById = new Map((catalog || []).map(product => [String(product.id), product]));
+  const shippingAddress = {
+    cep: customer.cep || '', endereco: customer.endereco, numero: customer.numero || '',
+    bairro: customer.bairro || '', cidade: customer.cidade, estado: customer.estado || '',
+  };
+
+  // 2. Criar/atualizar o cliente e o pedido (status Pendente) via service role —
+  // o navegador não grava mais nessas tabelas diretamente.
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .upsert({
+      full_name: customer.nome,
+      email: customer.email,
+      phone: customer.telefone,
+      cep: customer.cep || null,
+      address: customer.endereco,
+      address_number: customer.numero || null,
+      neighborhood: customer.bairro || null,
+      city: customer.cidade,
+      state: customer.estado || null,
+    }, { onConflict: 'email' })
+    .select()
+    .single();
+  if (clientError) return res.status(500).json({ error: 'Não foi possível registrar seus dados.' });
+
   const { data: sale, error: saleError } = await supabase
     .from('sales')
-    .select('id, status, total_amount')
-    .eq('id', saleId)
+    .insert({
+      client_id: client.id,
+      client_name: customer.nome,
+      payment_method: 'Stripe/Cartão-PIX',
+      total_amount: pricing.total / 100,
+      total_cost: pricing.cost / 100,
+      shipping_cost: 0,
+      shipping_address: shippingAddress,
+      status: 'Pendente',
+    })
+    .select()
     .single();
+  if (saleError) return res.status(500).json({ error: 'Não foi possível criar o pedido.' });
 
-  if (saleError || !sale) {
-    return res.status(404).json({ error: 'Venda não encontrada.' });
-  }
-
-  if (sale.status !== 'Pendente') {
-    return res.status(409).json({ error: `Venda já processada (status: ${sale.status}).` });
-  }
-
-  // 2. Validar integridade dos preços — previne manipulação de valor no frontend (Fix 1)
-  const calculatedTotal = cartItems.reduce(
-    (sum, item) => sum + Math.round(Number(item.price) * 100) * item.quantity,
-    0
-  );
-  const storedTotal = Math.round(Number(sale.total_amount) * 100);
-
-  if (Math.abs(calculatedTotal - storedTotal) > 1) { // tolerância de 1 centavo (arredondamento)
-    console.error(`[CHECKOUT] Inconsistência de valor: calculado=${calculatedTotal}, banco=${storedTotal}, saleId=${saleId}`);
-    return res.status(400).json({ error: 'Inconsistência de valor detectada. Recarregue o carrinho.' });
-  }
+  const saleItems = pricing.items.map(item => ({
+    sale_id: sale.id,
+    product_id: item.id,
+    quantity: item.quantity,
+    unit_price: item.cents / 100,
+    unit_cost: Number(catalogById.get(String(item.id))?.cost || 0),
+  }));
+  const { error: itemsError } = await supabase.from('sale_items').insert(saleItems);
+  if (itemsError) return res.status(500).json({ error: 'Não foi possível registrar os itens do pedido.' });
 
   try {
     // 3. Preparar os itens para o Stripe
-    const line_items = cartItems.map((item) => ({
+    const line_items = pricing.items.map((item) => ({
       price_data: {
         currency: 'brl',
         product_data: {
           name: item.nome,
-          images: item.imagem ? [item.imagem] : [],
+          images: item.image_url ? [item.image_url] : [],
         },
-        unit_amount: Math.round(Number(item.price) * 100), // Stripe usa centavos
+        unit_amount: item.cents, // Stripe usa centavos
       },
       quantity: item.quantity,
     }));
@@ -66,19 +110,19 @@ export default async function handler(req, res) {
       payment_method_types: ['card'],
       line_items,
       mode: 'payment',
-      customer_email: customerEmail,
+      customer_email: customer.email,
       success_url: `${req.headers.origin}/pagamento-sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/checkout`,
       metadata: {
-        saleId: saleId,
+        saleId: sale.id,
       },
     });
 
-    // 5. Salvar o stripe_session_id — falha aqui é crítica: sem ele o PaymentSuccess não encontra a venda (Fix 4)
+    // 5. Salvar o stripe_session_id — falha aqui é crítica: sem ele o PaymentSuccess não encontra a venda
     const { error: updateError } = await supabase
       .from('sales')
       .update({ stripe_session_id: session.id })
-      .eq('id', saleId);
+      .eq('id', sale.id);
 
     if (updateError) {
       console.error('[CHECKOUT] Falha crítica ao salvar stripe_session_id:', updateError.message);

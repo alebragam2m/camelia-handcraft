@@ -19,7 +19,7 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: 'always',
     },
     mutations: {
-      retry: 1, // Mutações tentam apenas uma vez em caso de conflito, mas retentam rede.
+      retry: false, // Escritas exigem idempotência antes de permitir retentativas automáticas.
     },
   },
 });

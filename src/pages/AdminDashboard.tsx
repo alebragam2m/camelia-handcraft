@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useSession } from '../hooks/useSession';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { formatCurrency } from '../utils/formatCurrency';
 import { productService } from '../services/productService';
 import { saleService } from '../services/saleService';
 import { clientService } from '../services/clientService';
+import DataSync from '../components/DataSync';
 
 // Components
 import FinanceModule from '../components/FinanceModule';
@@ -30,12 +32,27 @@ import ErrorBoundary from '../components/ErrorBoundary';
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('visao_geral');
-  const [userLevel, setUserLevel] = useState<number | null>(null);
+  const { session } = useSession();
+  const { data: access, isPending: accessPending, error: accessError } = useQuery({
+    queryKey: ['admin-access', session?.user.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('admin_users')
+        .select('access_level, is_active').eq('auth_user_id', session!.user.id).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!session,
+    staleTime: 0,
+    refetchInterval: 30000,
+    retry: 1,
+  });
+  const userLevel = !accessError && access?.is_active && [1, 2, 3, 4].includes(access.access_level) ? access.access_level : null;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
     queryFn: () => productService.getAll(),
+    enabled: userLevel !== null,
   });
 
   useEffect(() => {
@@ -45,58 +62,18 @@ export default function AdminDashboard() {
   const { data: sales = [], isError: isErrorSales } = useQuery({
     queryKey: ['sales'],
     queryFn: () => saleService.getAll(),
+    enabled: userLevel !== null,
   });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: _clients = [] } = useQuery({
     queryKey: ['clients'],
     queryFn: () => clientService.getAll(),
+    enabled: userLevel !== null,
   });
 
-  // Auth & Level detection
-  useEffect(() => {
-    const detectUserLevel = async () => {
-      // getSession() lê o localStorage de forma síncrona — disponível imediatamente no reload
-      // getUser() faz round-trip ao servidor e pode retornar null antes da sessão ser restaurada
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { navigate('/login'); return; }
-      const user = session.user;
-
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('access_level, is_active')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (error) {
-        // Erro de rede ou query — não destrói sessão, apenas bloqueia acesso
-        console.error("[Auth Auditor] Erro ao consultar privilégios de Admin:", error);
-        navigate('/login');
-        return;
-      }
-
-      if (!data) {
-        // Sem registro no RBAC — não destrói sessão
-        console.warn("[Auth Auditor] Sem registro no RBAC. Acesso negado.");
-        navigate('/login?error=no_rbac');
-        return;
-      }
-
-      if (!data.is_active) {
-        // Perfil explicitamente inativo — único caso em que destrói sessão
-        console.warn("[Auth Auditor] Perfil inativo. Acesso negado.");
-        await supabase.auth.signOut();
-        navigate('/login?error=inactive');
-        return;
-      }
-
-      setUserLevel(data.access_level);
-    };
-    detectUserLevel();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Bloqueia renderização do dashboard até o RBAC resolver — evita flash de conteúdo não-autorizado
+  if (!accessPending && userLevel === null) return <Navigate to="/login?error=no_rbac" replace />;
   if (userLevel === null) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F8FC] gap-4">
@@ -140,7 +117,7 @@ export default function AdminDashboard() {
               </div>
            </div>
            <div className="flex items-center gap-4">
-              <span className="hidden lg:block text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Sincronização Ativa (Motor Pro v3)</span>
+              <DataSync admin />
               <button onClick={handleLogout} className="px-4 py-2 bg-red-50 text-red-500 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">Sair</button>
            </div>
         </header>
@@ -152,11 +129,11 @@ export default function AdminDashboard() {
              <nav className="space-y-1 flex-1 overflow-y-auto pr-2 custom-scrollbar mt-10">
                 {[
                   { id: 'visao_geral', label: 'Visão Geral', icon: '📊' },
-                  { id: 'produtos', label: 'Produtos', icon: '📦' },
-                  { id: 'estoque', label: 'Estoque (PCP)', icon: '📉' },
+                  { id: 'produtos', label: 'Produtos', icon: '📦', levelRequired: 2 },
+                  { id: 'estoque', label: 'Estoque (PCP)', icon: '📉', levelRequired: 2 },
                   { id: 'clientes', label: 'CRM Completo', icon: '🤝' },
                   { id: 'vendas', label: 'Central de Vendas', icon: '💰' },
-                  { id: 'fornecedores', label: 'Fornecedores', icon: '🚛' },
+                  { id: 'fornecedores', label: 'Fornecedores', icon: '🚛', levelRequired: 2 },
                   { id: 'financeiro', label: 'Financeiro (DRE)', icon: '🏦', levelRequired: 3 },
                   { id: 'usuarios', label: 'Acessos/RBAC', icon: '👥', levelRequired: 4 },
                 ].map(item => (

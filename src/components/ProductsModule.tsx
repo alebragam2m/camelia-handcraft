@@ -7,7 +7,7 @@ import type { Product } from '../types/supabase';
 import ProductForm from './ProductForm';
 
 // --- Categorias de produtos da Camélia ---
-const PRODUCT_CATEGORIES = ['Porta Guardanapos', 'Guardanapos', 'Jogos Americanos', 'Diversos', 'Insumos'] as const;
+
 
 const CATEGORY_ICONS: Record<string, string> = {
   'Porta Guardanapos': '🪴',
@@ -37,6 +37,7 @@ export default function ProductsModule() {
   const [activeLine, setActiveLine] = useState<string | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [initialCategory, setInitialCategory] = useState('Diversos');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Pillar 2: TanStack Query - Fetching
@@ -58,6 +59,7 @@ export default function ProductsModule() {
     mutationFn: (id: string) => productService.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['catalog'] });
       closeModal();
     }
   });
@@ -75,6 +77,7 @@ export default function ProductsModule() {
   };
 
   const openCreateMode = (category: string) => {
+    setInitialCategory(category);
     // Agora o modal apenas abre o ProductForm sem dados (New Mode)
     setEditProduct(null);
     setIsCreating(true);
@@ -108,7 +111,8 @@ export default function ProductsModule() {
         {/* MODAL PADRÃO CAMÉLIA (ProductForm) */}
         {isCreating && (
           <ProductForm 
-            product={editProduct} 
+            product={editProduct}
+            initialCategory={initialCategory}
             onClose={closeModal} 
           />
         )}

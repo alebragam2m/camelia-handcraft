@@ -1,17 +1,15 @@
 import { formatCurrency } from '../utils/formatCurrency';
 import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function Checkout() {
-  const { cartItems, totalPrice, clearCart } = useCart();
-  const queryClient = useQueryClient();
+  const { cartItems, totalPrice, clearCart, catalogReady } = useCart();
   const [loading, setLoading] = useState(false);
   const [stockErrors, setStockErrors] = useState([]);
   const [user, setUser] = useState(null);
-  const navigate = useNavigate();
+
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -58,15 +56,20 @@ export default function Checkout() {
   const handleFinishOrder = async (e) => {
     e.preventDefault();
     if (cartItems.length === 0) return;
+    if (!catalogReady || cartItems.some(item => item.unavailable)) {
+      alert('Aguarde a atualização do catálogo e ajuste os itens indisponíveis no carrinho.');
+      return;
+    }
 
     setStockErrors([]);
     setLoading(true);
 
     try {
-      // 0. Validar estoque atual no banco antes de qualquer escrita (Regra de Negócio #2)
+      // 0. Checagem rápida de estoque no cliente — só UX, não autoritativa.
+      // A validação real acontece no servidor via priceCatalogOrder.
       const productIds = cartItems.map(item => item.id);
       const { data: currentStock, error: stockErr } = await supabase
-        .from('products')
+        .from('storefront_products')
         .select('id, nome, stock')
         .in('id', productIds);
 
@@ -87,60 +90,14 @@ export default function Checkout() {
         return;
       }
 
-      // 1. Criar ou atualizar cliente no CRM
-      const { data: client, error: clientErr } = await supabase
-        .from('clients')
-        .upsert({
-          full_name: formData.nome,
-          email: formData.email,
-          phone: formData.telefone,
-        }, { onConflict: 'email' })
-        .select()
-        .single();
-
-      if (clientErr) throw clientErr;
-
-      // 2. Criar a Venda no Supabase (Status Pendente)
-      const { data: sale, error: saleErr } = await supabase
-        .from('sales')
-        .insert({
-          client_id: client.id,
-          client_name: formData.nome,
-          payment_method: 'Stripe/Cartão-PIX',
-          total_amount: totalPrice,
-          total_cost: cartItems.reduce((acc, item) => acc + (Number(item.cost || 0) * item.quantity), 0),
-          status: 'Pendente',
-          shipping_cost: 0 
-        })
-        .select()
-        .single();
-
-      if (saleErr) throw saleErr;
-
-      // 2.1 Inserir itens da venda (Vínculo para baixa de estoque futura)
-      const saleItems = cartItems.map(item => ({
-        sale_id: sale.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: Number(item.price),
-        unit_cost: Number(item.cost || 0),
-      }));
-
-      const { error: itemsErr } = await supabase.from('sale_items').insert(saleItems);
-      if (itemsErr) throw itemsErr;
-
-      // Invalidar caches do admin para refletir o novo pedido e cliente imediatamente
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-
-      // 3. Chamar nossa API Vercel para criar sessão do Stripe
+      // 1. Servidor cria cliente + pedido + itens (preço/estoque recalculados
+      // lá) e a sessão do Stripe em uma única chamada.
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          saleId: sale.id,
-          cartItems: cartItems,
-          customerEmail: formData.email
+          cartItems: cartItems.map(item => ({ id: item.id, quantity: item.quantity })),
+          customer: formData,
         }),
       });
 
@@ -194,6 +151,7 @@ export default function Checkout() {
             </div>
           </div>
 
+          {(!catalogReady || cartItems.some(item => item.unavailable)) && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">A compra está aguardando preços e disponibilidade atualizados. Confira os itens no carrinho.</p>}
           <h2 className="font-serif text-3xl font-bold text-secundaria mb-4 border-b border-gray-100 pb-6">Detalhes de Entrega</h2>
           {!user && (
             <div className="bg-primaria/5 p-4 rounded-2xl mb-8 flex justify-between items-center border border-primaria/10">
@@ -247,7 +205,7 @@ export default function Checkout() {
                   <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mt-3">Ajuste as quantidades no carrinho e tente novamente.</p>
                 </div>
               )}
-              <button disabled={loading} className="w-full bg-secundaria text-white font-bold py-6 rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-[4px] text-sm active:scale-[0.98] disabled:bg-gray-400 flex items-center justify-center gap-3">
+              <button disabled={loading || !catalogReady || cartItems.some(item => item.unavailable)} className="w-full bg-secundaria text-white font-bold py-6 rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-[4px] text-sm active:scale-[0.98] disabled:bg-gray-400 flex items-center justify-center gap-3">
                 {loading ? "Preparando Pagamento..." : (
                   <>
                     Ir para o Pagamento
