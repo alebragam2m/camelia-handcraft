@@ -34,18 +34,21 @@ function Login() {
        setErrorInput(error.message);
        setLoading(false);
     } else {
-       // Login do site público é sempre para a área do cliente. Quem também
-       // for admin acessa o painel pelo botão "Painel de Gestão" em
-       // /minha-conta (ClientArea.jsx), não por um desvio automático aqui.
-       navigate('/minha-conta');
+       // Login do site público é sempre para a área do cliente (ou de volta
+       // para onde o login foi pedido, ex. checkout) — nunca para o painel.
+       // Quem também for admin acessa o painel pelo botão "Painel de Gestão"
+       // em /minha-conta (ClientArea.jsx), não por um desvio automático aqui.
+       navigate(location.state?.from || '/minha-conta');
     }
   };
 
   const handleSocialLogin = async (provider) => {
+    // OAuth é um redirect de página inteira — o estado do React Router não
+    // sobrevive à ida e volta pelo provedor, então a origem vai na própria URL.
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: window.location.origin + '/minha-conta' // Por padrão envia pra conta, mas o App fará o check no mount se necessário
+        redirectTo: window.location.origin + (location.state?.from || '/minha-conta')
       }
     });
     if (error) setErrorInput(error.message);

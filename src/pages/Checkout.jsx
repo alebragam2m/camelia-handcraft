@@ -156,7 +156,7 @@ export default function Checkout() {
           {!user && (
             <div className="bg-primaria/5 p-4 rounded-2xl mb-8 flex justify-between items-center border border-primaria/10">
               <span className="text-[11px] text-primaria font-bold uppercase tracking-widest">Já é cliente?</span>
-              <Link to="/login" className="text-[11px] font-bold uppercase tracking-widest bg-primaria text-white px-4 py-2 rounded-lg hover:bg-secundaria transition-all">Entrar agora</Link>
+              <Link to="/login" state={{ from: '/checkout' }} className="text-[11px] font-bold uppercase tracking-widest bg-primaria text-white px-4 py-2 rounded-lg hover:bg-secundaria transition-all">Entrar agora</Link>
             </div>
           )}
 
