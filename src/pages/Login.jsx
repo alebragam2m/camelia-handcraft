@@ -34,19 +34,10 @@ function Login() {
        setErrorInput(error.message);
        setLoading(false);
     } else {
-       // Verificação inteligente de perfil: Admin ou Cliente?
-       const { data: { user } } = await supabase.auth.getUser();
-       const { data: adminRecord } = await supabase
-         .from('admin_users')
-         .select('access_level')
-         .eq('auth_user_id', user.id)
-         .single();
-
-       if (adminRecord) {
-         navigate('/admin');
-       } else {
-         navigate('/minha-conta');
-       }
+       // Login do site público é sempre para a área do cliente. Quem também
+       // for admin acessa o painel pelo botão "Painel de Gestão" em
+       // /minha-conta (ClientArea.jsx), não por um desvio automático aqui.
+       navigate('/minha-conta');
     }
   };
 
