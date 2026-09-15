@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useSession } from '../hooks/useSession';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { session, loading: sessionLoading } = useSession();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -19,6 +21,14 @@ function Login() {
       setErrorInput('Acesso Negado: Seu perfil administrativo está inativo.');
     }
   }, [location.search]);
+
+  useEffect(() => {
+    // Quem já está logado não deve ver o formulário de novo — manda direto
+    // para onde o login foi pedido (ex. checkout) ou para a área do cliente.
+    if (!sessionLoading && session) {
+      navigate(location.state?.from || '/minha-conta', { replace: true });
+    }
+  }, [session, sessionLoading, location.state, navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
