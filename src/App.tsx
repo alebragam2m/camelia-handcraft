@@ -20,6 +20,7 @@ import LegalPage from './pages/LegalPage';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import ClientArea from './pages/ClientArea';
 import PaymentSuccess from './pages/PaymentSuccess';
 
@@ -53,6 +54,7 @@ function AppContent() {
 
           {/* ----- AUTH MODULE ----- */}
           <Route path="/login" element={<Login />} />
+          <Route path="/cadastro" element={<Signup />} />
           <Route path="/pagamento-sucesso" element={<><Navbar /><PaymentSuccess /><Footer /></>} />
           <Route path="/minha-conta" element={
             <ProtectedRoute>

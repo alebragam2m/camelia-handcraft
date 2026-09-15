@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../hooks/useSession';
 
@@ -141,7 +141,7 @@ function Login() {
         </form>
         
         <p className="text-center mt-8 text-[11px] text-gray-400 font-medium">
-          Ainda não tem conta? <span className="text-primaria cursor-pointer hover:underline">Cadastre-se</span>
+          Ainda não tem conta? <Link to="/cadastro" state={location.state} className="text-primaria font-bold cursor-pointer hover:underline">Cadastre-se</Link>
         </p>
       </div>
       <p className="text-xs text-gray-400 mt-12 relative z-10 font-bold uppercase tracking-widest">Camélia Handcraft Ateliê</p>

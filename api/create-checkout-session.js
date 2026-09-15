@@ -64,6 +64,21 @@ export default async function handler(req, res) {
     .single();
   if (clientError) return res.status(500).json({ error: 'Não foi possível registrar seus dados.' });
 
+  // Customer da Stripe (não dado de cartão) reaproveitado entre pedidos —
+  // é o que permite ao Checkout hospedado oferecer "salvar cartão" e listar
+  // cartões salvos em compras futuras. Falha aqui não bloqueia a compra:
+  // só perde a opção de cartão salvo desta vez.
+  let stripeCustomerId = client.stripe_customer_id;
+  if (!stripeCustomerId) {
+    try {
+      const stripeCustomer = await stripe.customers.create({ email: customer.email, name: customer.nome });
+      stripeCustomerId = stripeCustomer.id;
+      await supabase.from('clients').update({ stripe_customer_id: stripeCustomerId }).eq('id', client.id);
+    } catch (err) {
+      console.error('[CHECKOUT] Falha ao criar Stripe Customer (cartão salvo indisponível nesta compra):', err.message);
+    }
+  }
+
   const { data: sale, error: saleError } = await supabase
     .from('sales')
     .insert({
@@ -106,11 +121,18 @@ export default async function handler(req, res) {
 
     // 4. Criar a sessão do Stripe
     // 'payment_method_types: card' — quando ativar PIX no Stripe Dashboard ele aparece automaticamente
+    // Com customer + saved_payment_method_options: o Checkout hospedado mostra
+    // a caixa opcional "salvar cartão" e, em compras futuras, os cartões já
+    // salvos desse cliente para reaproveitar — tudo do lado da Stripe.
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items,
       mode: 'payment',
-      customer_email: customer.email,
+      ...(stripeCustomerId ? { customer: stripeCustomerId } : { customer_email: customer.email }),
+      ...(stripeCustomerId ? {
+        payment_intent_data: { setup_future_usage: 'on_session' },
+        saved_payment_method_options: { payment_method_save: 'enabled' },
+      } : {}),
       success_url: `${req.headers.origin}/pagamento-sucesso?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin}/checkout`,
       metadata: {

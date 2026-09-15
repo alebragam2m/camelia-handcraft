@@ -36,11 +36,25 @@ function ClientArea() {
     if (adminRecord) setIsAdmin(true);
 
     // Fetch client record — lista explícita de colunas: exclui internal_notes/is_vip
-    const { data: client } = await supabase
+    const clientColumns = 'id, full_name, email, phone, cep, address, address_number, neighborhood, city, state';
+    let { data: client } = await supabase
       .from('clients')
-      .select('id, full_name, email, phone, cep, address, address_number, neighborhood, city, state')
+      .select(clientColumns)
       .eq('email', user.email)
-      .single();
+      .maybeSingle();
+
+    if (!client) {
+      // Primeiro acesso sem cadastro prévio (ex. login social ou e-mail
+      // confirmado sem checkout anterior) — cria o registro agora.
+      await supabase.rpc('ensure_own_client_profile', {
+        p_full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+      });
+      ({ data: client } = await supabase
+        .from('clients')
+        .select(clientColumns)
+        .eq('email', user.email)
+        .maybeSingle());
+    }
 
     if (client) {
       setClientData(client);
