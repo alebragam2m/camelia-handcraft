@@ -120,6 +120,14 @@ export default function ManualSaleModal({ onClose }: ManualSaleModalProps) {
       // Chama o RPC existente (baixa estoque automaticamente)
       const result = await saleService.processSale(saleData, itemsData);
 
+      // process_sale captura seus próprios erros internamente e devolve
+      // {success:false, error} em vez de estourar — sem checar isso aqui a
+      // venda podia falhar (nível insuficiente, estoque negativo, etc.) sem
+      // nenhum aviso, fechando o modal como se tivesse dado certo.
+      if (!result?.success) {
+        throw new Error(result?.error || 'Falha desconhecida ao registrar a venda.');
+      }
+
       // Se a data for retroativa, atualiza o created_at
       if (saleDate !== today && result?.id) {
         await supabase
