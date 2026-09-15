@@ -1,12 +1,25 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import { useSession } from '../hooks/useSession';
+import { supabase } from '../lib/supabase';
 
 function Navbar() {
   const { totalItems, setIsCartOpen } = useCart();
   const { session } = useSession();
   const accountLink = session ? '/minha-conta' : '/login';
+  const { data: clientName } = useQuery({
+    queryKey: ['own-client-name', session?.user.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('clients').select('full_name').eq('email', session.user.email).maybeSingle();
+      return data?.full_name || null;
+    },
+    enabled: !!session,
+    staleTime: 5 * 60 * 1000,
+  });
+  const displayName = clientName || session?.user.user_metadata?.full_name || session?.user.user_metadata?.name || null;
+  const firstName = displayName ? displayName.trim().split(/\s+/)[0] : null;
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -121,8 +134,9 @@ function Navbar() {
             </button>
 
             {/* Login / Área do Cliente */}
-            <Link to={accountLink} onClick={() => setIsMenuOpen(false)} className="hidden md:flex hover:text-primaria transition-colors ml-4 pl-4 border-l border-gray-200" title="Área do Cliente">
+            <Link to={accountLink} onClick={() => setIsMenuOpen(false)} className="hidden md:flex items-center gap-2 hover:text-primaria transition-colors ml-4 pl-4 border-l border-gray-200" title="Área do Cliente">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+              {firstName && <span className="text-sm font-bold max-w-[100px] truncate" title={displayName}>{firstName}</span>}
             </Link>
 
             {/* Botão Menu Mobile (Hamburguer) */}
@@ -174,7 +188,7 @@ function Navbar() {
             <div className="mt-auto border-t border-gray-100 pt-8">
                <Link to={accountLink} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 text-secundaria font-bold text-sm tracking-widest uppercase">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
-                  Área do Cliente
+                  {firstName || 'Área do Cliente'}
                </Link>
             </div>
           </div>
