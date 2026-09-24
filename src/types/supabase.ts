@@ -101,7 +101,7 @@ export interface FinancialTransaction {
   id: string;
   description: string;
   amount: number;
-  type: 'Receita' | 'Despesa';
+  type: 'receita' | 'despesa';
   category: string;
   status: 'Pago' | 'Pendente';
   due_date: string;
