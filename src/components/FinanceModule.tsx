@@ -9,7 +9,7 @@ type TransactionType = 'Receita' | 'Despesa';
 type TransactionStatus = 'Pago' | 'Pendente';
 
 interface FinanceFormValues {
-  transaction_type: TransactionType;
+  type: TransactionType;
   category: string;
   description: string;
   amount: number | string;
@@ -29,7 +29,7 @@ export default function FinanceModule() {
 
   const { register, handleSubmit, reset, watch, setValue, formState: { isSubmitting } } = useForm<FinanceFormValues>({
     defaultValues: {
-      transaction_type: 'Despesa',
+      type: 'Despesa',
       category: 'Insumos Fabris',
       description: '',
       amount: '',
@@ -38,7 +38,7 @@ export default function FinanceModule() {
     }
   });
 
-  const transactionTypeWatch = watch('transaction_type');
+  const transactionTypeWatch = watch('type');
   const statusWatch = watch('status');
 
   const saveMutation = useMutation({
@@ -68,10 +68,10 @@ export default function FinanceModule() {
   });
 
   // Cálculos Financeiros
-  const receitas = transactions.filter((t: any) => t.transaction_type === 'Receita' && t.status === 'Pago').reduce((a: number, b: any) => a + Number(b.amount), 0);
-  const despesas = transactions.filter((t: any) => t.transaction_type === 'Despesa' && t.status === 'Pago').reduce((a: number, b: any) => a + Number(b.amount), 0);
+  const receitas = transactions.filter((t: any) => t.type === 'Receita' && t.status === 'Pago').reduce((a: number, b: any) => a + Number(b.amount), 0);
+  const despesas = transactions.filter((t: any) => t.type === 'Despesa' && t.status === 'Pago').reduce((a: number, b: any) => a + Number(b.amount), 0);
   const saldo = receitas - despesas;
-  const contasApagar = transactions.filter((t: any) => t.transaction_type === 'Despesa' && t.status === 'Pendente').reduce((a: number, b: any) => a + Number(b.amount), 0);
+  const contasApagar = transactions.filter((t: any) => t.type === 'Despesa' && t.status === 'Pendente').reduce((a: number, b: any) => a + Number(b.amount), 0);
 
   const onFormSubmit = (data: FinanceFormValues) => {
     saveMutation.mutate(data);
@@ -126,7 +126,7 @@ export default function FinanceModule() {
                         <span className="text-[9px] uppercase font-bold text-gray-400">{t.category}</span>
                       </td>
                       <td className="p-5 font-bold text-xs text-gray-500">{new Date(t.due_date).toLocaleDateString('pt-BR')}</td>
-                      <td className={`p-5 font-bold ${t.transaction_type === 'Receita' ? 'text-emerald-600' : 'text-red-500'}`}>{t.transaction_type === 'Receita' ? '+' : '-'} {formatCurrency(t.amount)}</td>
+                      <td className={`p-5 font-bold ${t.type === 'Receita' ? 'text-emerald-600' : 'text-red-500'}`}>{t.type === 'Receita' ? '+' : '-'} {formatCurrency(t.amount)}</td>
                       <td className="p-5 text-center">
                         <span className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase border ${t.status === 'Pago' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-orange-50 text-orange-700 border-orange-200'}`}>{t.status}</span>
                       </td>
@@ -153,8 +153,8 @@ export default function FinanceModule() {
 
               <form onSubmit={handleSubmit(onFormSubmit)} className="p-8 space-y-6">
                 <div className="flex gap-4 p-1 bg-gray-50 rounded-2xl">
-                  <button type="button" onClick={() => setValue('transaction_type', 'Despesa')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'Despesa' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400'}`}>🔥 Saída</button>
-                  <button type="button" onClick={() => setValue('transaction_type', 'Receita')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'Receita' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}>💵 Entrada</button>
+                  <button type="button" onClick={() => setValue('type', 'Despesa')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'Despesa' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400'}`}>🔥 Saída</button>
+                  <button type="button" onClick={() => setValue('type', 'Receita')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'Receita' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}>💵 Entrada</button>
                 </div>
 
                 <div className="space-y-4">
