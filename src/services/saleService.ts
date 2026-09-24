@@ -36,11 +36,16 @@ export const saleService = {
   },
 
   async remove(id: string): Promise<void> {
-    // 1. Apagar os itens filhos primeiro (foreign key)
+    // 1. Apagar o lançamento financeiro vinculado (se houver) — senão a
+    // receita fica "fantasma" no caixa depois da venda excluída.
+    const { error: financeError } = await supabase.from('financial_transactions').delete().eq('related_sale_id', id);
+    if (financeError) throw new Error(`Erro ao apagar lançamento financeiro vinculado: ${financeError.message}`);
+
+    // 2. Apagar os itens filhos (foreign key)
     const { error: itemsError } = await supabase.from('sale_items').delete().eq('sale_id', id);
     if (itemsError) throw new Error(`Erro ao apagar itens da venda: ${itemsError.message}`);
 
-    // 2. Apagar a venda
+    // 3. Apagar a venda
     const { error } = await supabase.from('sales').delete().eq('id', id);
     if (error) throw new Error(`Erro ao apagar venda: ${error.message}`);
   },
