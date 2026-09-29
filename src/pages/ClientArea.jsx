@@ -2,6 +2,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { isSalePaid } from '../lib/saleStatus';
 import './Auth.css';
 
 function ClientArea() {
@@ -153,7 +154,7 @@ function ClientArea() {
                     >
                       <div className="order-header">
                         <span>Pedido <strong>#{order.id.slice(0, 5)}</strong></span>
-                        <span className={`status ${['Paga', 'Pago', 'completed'].includes(order.status) ? 'delivered' : 'processing'}`}>{order.status}</span>
+                        <span className={`status ${isSalePaid(order.status) ? 'delivered' : 'processing'}`}>{order.status}</span>
                       </div>
                       <p className="order-date">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
                       <p className="order-total">Total: <strong>{formatCurrency(order.total_amount)}</strong></p>

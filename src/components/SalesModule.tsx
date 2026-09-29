@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { saleService } from '../services/saleService';
 import { formatCurrency } from '../utils/formatCurrency';
+import { isSalePaid, saleStatusLabel } from '../lib/saleStatus';
 import ManualSaleModal from './ManualSaleModal';
 
 interface SalesModuleProps {
@@ -95,10 +96,9 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${
-                        sale.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
-                        sale.status === 'pending' ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-gray-400'
+                        isSalePaid(sale.status) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                       }`}>
-                        {sale.status === 'completed' ? 'Finalizado' : 'Pendente'}
+                        {saleStatusLabel(sale.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4">

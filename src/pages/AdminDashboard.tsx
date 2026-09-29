@@ -7,6 +7,7 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { productService } from '../services/productService';
 import { saleService } from '../services/saleService';
 import { clientService } from '../services/clientService';
+import { isSalePaid } from '../lib/saleStatus';
 import DataSync from '../components/DataSync';
 
 // Components
@@ -93,13 +94,14 @@ export default function AdminDashboard() {
   const currM = new Date().getMonth();
   const currY = new Date().getFullYear();
   
-  const vMes = sales.filter((v: any) => { 
-     if(!v.created_at) return false;
-     const d = new Date(v.created_at); 
-     return d.getMonth() === currM && d.getFullYear() === currY; 
+  // Só vendas pagas contam como faturamento — Pendente/abandonada não é receita.
+  const vMes = sales.filter((v: any) => {
+     if(!v.created_at || !isSalePaid(v.status)) return false;
+     const d = new Date(v.created_at);
+     return d.getMonth() === currM && d.getFullYear() === currY;
   });
-  
-  const fatDia = sales.filter((v: any) => v.created_at?.startsWith(todayStr)).reduce((acc, v: any) => acc + Number(v.total_amount), 0);
+
+  const fatDia = sales.filter((v: any) => isSalePaid(v.status) && v.created_at?.startsWith(todayStr)).reduce((acc, v: any) => acc + Number(v.total_amount), 0);
   const fatMes = vMes.reduce((acc, v: any) => acc + Number(v.total_amount), 0);
   const lucroMes = vMes.reduce((acc, v: any) => acc + (Number(v.total_amount) - Number(v.total_cost || 0)), 0);
   const produtosEmAlerta = products.filter((p: any) => (p.stock ?? 0) <= (p.min_stock ?? 5)).length;
