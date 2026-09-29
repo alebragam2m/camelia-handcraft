@@ -9,6 +9,15 @@ import ErrorBoundary from './ErrorBoundary';
 type TransactionType = 'receita' | 'despesa';
 type TransactionStatus = 'Pago' | 'Pendente';
 
+const CATEGORIES: Record<TransactionType, string[]> = {
+  despesa: ['Insumos Fabris', 'Frete / Logística', 'Marketing', 'Aluguel', 'Taxas / Impostos', 'Equipamentos', 'Outros'],
+  receita: ['Vendas', 'Serviços', 'Outros'],
+};
+const DEFAULT_CATEGORY: Record<TransactionType, string> = {
+  despesa: 'Insumos Fabris',
+  receita: 'Vendas',
+};
+
 interface FinanceFormValues {
   type: TransactionType;
   category: string;
@@ -154,14 +163,20 @@ export default function FinanceModule() {
 
               <form onSubmit={handleSubmit(onFormSubmit)} className="p-8 space-y-6">
                 <div className="flex gap-4 p-1 bg-gray-50 rounded-2xl">
-                  <button type="button" onClick={() => setValue('type', 'despesa')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'despesa' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400'}`}>🔥 Saída</button>
-                  <button type="button" onClick={() => setValue('type', 'receita')} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'receita' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}>💵 Entrada</button>
+                  <button type="button" onClick={() => { setValue('type', 'despesa'); setValue('category', DEFAULT_CATEGORY.despesa); }} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'despesa' ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400'}`}>🔥 Saída</button>
+                  <button type="button" onClick={() => { setValue('type', 'receita'); setValue('category', DEFAULT_CATEGORY.receita); }} className={`flex-1 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all ${transactionTypeWatch === 'receita' ? 'bg-emerald-500 text-white shadow-lg' : 'text-gray-400'}`}>💵 Entrada</button>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Título / Descrição</label>
                     <input type="text" {...register('description', { required: true })} placeholder="Ex: Compra de Matéria Prima" className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 font-bold text-secundaria" />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Categoria</label>
+                    <select {...register('category', { required: true })} className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 font-bold text-secundaria">
+                      {CATEGORIES[transactionTypeWatch].map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
