@@ -9,6 +9,7 @@ function ClientArea() {
   const [user, setUser] = useState(null);
   const [clientData, setClientData] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
@@ -59,12 +60,10 @@ function ClientArea() {
     if (client) {
       setClientData(client);
 
-      // Fetch orders
-      const { data: saleData } = await supabase
-        .from('sales')
-        .select('id, status, total_amount, created_at, shipping_address')
-        .eq('client_id', client.id)
-        .order('created_at', { ascending: false });
+      // Fetch orders (com itens + produto, para o detalhamento clicável).
+      // RPC dedicada: um cliente comum não tem permissão de leitura direta
+      // em `products`, e storefront_products só lista o catálogo atual.
+      const { data: saleData } = await supabase.rpc('get_my_orders');
 
       if (saleData) setOrders(saleData);
     }
@@ -147,14 +146,18 @@ function ClientArea() {
                   </div>
                 ) : (
                   orders.map(order => (
-                    <div key={order.id} className="order-item">
+                    <button
+                      key={order.id}
+                      onClick={() => setSelectedOrder(order)}
+                      className="order-item w-full text-left cursor-pointer hover:shadow-md transition-shadow"
+                    >
                       <div className="order-header">
                         <span>Pedido <strong>#{order.id.slice(0, 5)}</strong></span>
-                        <span className={`status ${order.status === 'Pago' ? 'delivered' : 'processing'}`}>{order.status}</span>
+                        <span className={`status ${['Paga', 'Pago', 'completed'].includes(order.status) ? 'delivered' : 'processing'}`}>{order.status}</span>
                       </div>
                       <p className="order-date">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
                       <p className="order-total">Total: <strong>{formatCurrency(order.total_amount)}</strong></p>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -187,6 +190,68 @@ function ClientArea() {
           </div>
         </div>
       </div>
+
+      {/* Detalhamento do pedido */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-secundaria/80 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-secundaria px-6 py-4 text-white flex justify-between items-center">
+              <div>
+                <h3 className="font-serif text-base font-bold mb-0.5">Pedido #{selectedOrder.id.slice(0, 5)}</h3>
+                <p className="text-[9px] text-primaria font-bold uppercase tracking-widest">
+                  {new Date(selectedOrder.created_at).toLocaleDateString('pt-BR')} • {selectedOrder.payment_method || 'Pagamento local'}
+                </p>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} className="text-white/50 hover:text-white font-bold text-base transition-colors">✕</button>
+            </div>
+
+            <div className="p-5 max-h-[55vh] overflow-y-auto space-y-3">
+              {(selectedOrder.items || []).map((item) => (
+                <div key={item.id} className="flex items-center gap-4 bg-gray-50 border border-gray-100 p-3 rounded-xl">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.nome} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-lg">🏷️</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-secundaria text-sm">{item.nome || 'Item indisponível'}</p>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                      {item.quantity}x de {formatCurrency(item.unit_price)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-sm text-secundaria">{formatCurrency(item.quantity * item.unit_price)}</p>
+                  </div>
+                </div>
+              ))}
+
+              {selectedOrder.shipping_address && (
+                <div className="border-t border-gray-100 pt-3 mt-3">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Endereço de Entrega</p>
+                  <p className="text-xs text-gray-600">
+                    {[selectedOrder.shipping_address.endereco, selectedOrder.shipping_address.numero].filter(Boolean).join(', ')}
+                    {selectedOrder.shipping_address.bairro ? ` — ${selectedOrder.shipping_address.bairro}` : ''}
+                    {selectedOrder.shipping_address.cidade ? `, ${selectedOrder.shipping_address.cidade}` : ''}
+                    {selectedOrder.shipping_address.estado ? `/${selectedOrder.shipping_address.estado}` : ''}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-between items-center">
+              <div>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Total do Pedido</p>
+                <p className="font-serif font-bold text-xl text-emerald-600">{formatCurrency(selectedOrder.total_amount)}</p>
+              </div>
+              <button onClick={() => setSelectedOrder(null)} className="px-5 py-2 bg-white border border-gray-200 text-gray-500 font-bold rounded-lg uppercase tracking-widest text-[9px] hover:border-secundaria hover:text-secundaria transition-all">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

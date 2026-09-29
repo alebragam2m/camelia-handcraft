@@ -68,7 +68,7 @@ export default function ClientProfileView({ client, sales, onBack }: ClientProfi
           <div className="space-y-3">
             {clientSales.map((sale) => {
               const dataBR = new Date(sale.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-              const statusColor = sale.status === 'Finalizada' || sale.status === 'Aprovado'
+              const statusColor = ['Paga', 'Pago', 'completed'].includes(sale.status)
                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                 : 'bg-amber-50 text-amber-600 border-amber-100';
 
