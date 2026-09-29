@@ -11,6 +11,11 @@ export function isSalePaid(status) {
   return PAID_STATUSES.includes(status);
 }
 
+export function isSaleCancelled(status) {
+  return status === 'Cancelada';
+}
+
 export function saleStatusLabel(status) {
+  if (isSaleCancelled(status)) return 'Cancelada';
   return isSalePaid(status) ? 'Finalizado' : 'Pendente';
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { saleService } from '../services/saleService';
 import { formatCurrency } from '../utils/formatCurrency';
-import { isSalePaid, saleStatusLabel } from '../lib/saleStatus';
+import { isSalePaid, isSaleCancelled, saleStatusLabel } from '../lib/saleStatus';
 import ManualSaleModal from './ManualSaleModal';
 
 interface SalesModuleProps {
@@ -26,6 +26,16 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
     onError: (err: Error) => alert(`Erro ao apagar: ${err.message}`),
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => saleService.cancel(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+    onError: (err: Error) => alert(`Erro ao cancelar: ${err.message}`),
+  });
+
   const handleDelete = (e: React.MouseEvent, sale: any) => {
     e.stopPropagation();
     const clientName = sale.clients?.full_name || 'Consumidor Final';
@@ -33,6 +43,14 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
     const data = new Date(sale.created_at).toLocaleDateString('pt-BR');
     if (window.confirm(`⚠️ Apagar venda permanentemente?\n\nCliente: ${clientName}\nValor: ${valor}\nData: ${data}\n\nEssa ação é irreversível.`)) {
       deleteMutation.mutate(sale.id);
+    }
+  };
+
+  const handleCancel = (e: React.MouseEvent, sale: any) => {
+    e.stopPropagation();
+    const clientName = sale.clients?.full_name || 'Consumidor Final';
+    if (window.confirm(`Cancelar venda de ${clientName}?\n\nDevolve o estoque (se já baixado) e remove o lançamento financeiro. A venda continua no histórico como "Cancelada". Não estorna o pagamento na Stripe — isso é feito à parte.`)) {
+      cancelMutation.mutate(sale.id);
     }
   };
 
@@ -95,15 +113,32 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
                       <p className="text-sm font-bold text-primaria">{formatCurrency(sale.total_amount)}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${
-                        isSalePaid(sale.status) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {saleStatusLabel(sale.status)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest ${
+                          isSaleCancelled(sale.status) ? 'bg-gray-100 text-gray-400' :
+                          isSalePaid(sale.status) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                        }`}>
+                          {saleStatusLabel(sale.status)}
+                        </span>
+                        {sale.stock_conflict && (
+                          <span title="Estoque insuficiente no momento da confirmação — verifique manualmente" className="text-amber-500 text-sm cursor-help">⚠️</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <button className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Ver Recibo ❯</button>
+
+                        {!isSaleCancelled(sale.status) && (
+                          <button
+                            onClick={(e) => handleCancel(e, sale)}
+                            disabled={cancelMutation.isPending}
+                            className="text-[9px] font-bold text-orange-300 uppercase tracking-widest hover:text-orange-500 transition-colors disabled:opacity-40 border border-orange-100 px-2 py-0.5 rounded-lg hover:border-orange-300 hover:bg-orange-50"
+                            title="Cancelar venda"
+                          >
+                            {cancelMutation.isPending ? '...' : '↩ Cancelar'}
+                          </button>
+                        )}
 
                         {/* BOTÃO DE EXCLUSÃO — SOMENTE ADMIN (nível 4) */}
                         {isAdmin && (

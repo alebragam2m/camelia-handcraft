@@ -35,6 +35,17 @@ export const saleService = {
     return data;
   },
 
+  /**
+   * Cancela a venda mantendo o histórico (não apaga a linha). O gatilho
+   * handle_sale_cancellation devolve estoque (se havia sido baixado) e
+   * remove o lançamento financeiro vinculado. Não reembolsa na Stripe —
+   * o estorno do dinheiro continua manual.
+   */
+  async cancel(id: string): Promise<void> {
+    const { error } = await supabase.from('sales').update({ status: 'Cancelada' }).eq('id', id);
+    if (error) throw new Error(`Erro ao cancelar venda: ${error.message}`);
+  },
+
   async remove(id: string): Promise<void> {
     // 1. Apagar o lançamento financeiro vinculado (se houver) — senão a
     // receita fica "fantasma" no caixa depois da venda excluída.

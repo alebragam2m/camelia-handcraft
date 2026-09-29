@@ -52,12 +52,34 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true });
       }
 
+      // 1.1 Revalidação leve: o pagamento já foi capturado pela Stripe, então
+      // isso NUNCA bloqueia a confirmação — só sinaliza pro admin resolver
+      // manualmente se, entre o checkout e o pagamento, o estoque acabou.
+      const { data: items } = await supabase
+        .from('sale_items')
+        .select('product_id, quantity')
+        .eq('sale_id', saleId);
+
+      let stockConflict = false;
+      if (items?.length) {
+        const { data: currentProducts } = await supabase
+          .from('products')
+          .select('id, stock')
+          .in('id', items.map(i => i.product_id));
+        const stockById = new Map((currentProducts || []).map(p => [p.id, p.stock]));
+        stockConflict = items.some(i => Number(stockById.get(i.product_id) ?? 0) < i.quantity);
+        if (stockConflict) {
+          console.warn(`[Webhook] Venda ${saleId} confirmada com estoque insuficiente em pelo menos um item.`);
+        }
+      }
+
       // 2. Atualizar o status da venda para "Paga"
       const { error: updateError } = await supabase
         .from('sales')
         .update({
           status: 'Paga',
-          payment_intent_id: session.payment_intent
+          payment_intent_id: session.payment_intent,
+          stock_conflict: stockConflict,
         })
         .eq('id', saleId);
 
