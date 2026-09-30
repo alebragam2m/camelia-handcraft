@@ -1,12 +1,25 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCatalog } from '../hooks/useCatalog';
 import { getCollections } from '../lib/catalog';
 import CatalogFeedback from '../components/CatalogFeedback';
 
+const HERO_SLIDE_INTERVAL_MS = 5000;
+
 function Home() {
   const { data: products = [], isPending: loading, error } = useCatalog();
   const collections = getCollections(products);
-  const heroPhotos = products.filter(p => p.image_url).slice(0, 6);
+  const heroPhotos = products.filter(p => p.image_url).slice(0, 4);
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    if (heroPhotos.length < 2) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const id = setInterval(() => {
+      setHeroIndex(i => (i + 1) % heroPhotos.length);
+    }, HERO_SLIDE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [heroPhotos.length]);
 
   return (
     <div className="bg-fundo min-h-screen">
@@ -15,33 +28,29 @@ function Home() {
       {/* Hero Section (Fundo Roxo Escuro Mantido conforme aprovação) */}
       <section className="relative bg-secundaria text-branco py-32 px-6 lg:px-12 flex flex-col items-center justify-center text-center overflow-hidden">
         {heroPhotos.length > 0 && (
-          <div className="absolute inset-0 flex">
-            <style>{`
-              @keyframes heroKenBurns { from { transform: scale(1.15); } to { transform: scale(1.32); } }
-              .hero-photo { animation: heroKenBurns 22s ease-in-out infinite alternate; }
-              @media (prefers-reduced-motion: reduce) { .hero-photo { animation: none; } }
-            `}</style>
-            {heroPhotos.map((product, i) => (
-              <div
-                key={product.id}
-                className={`relative flex-1 h-full overflow-hidden ${i >= 3 ? 'hidden sm:block' : ''} ${i >= 5 ? 'hidden lg:block' : ''}`}
-              >
+          <div className="absolute inset-0">
+            {heroPhotos.map((product, i) => {
+              let offset = i - heroIndex;
+              const n = heroPhotos.length;
+              if (offset > n / 2) offset -= n;
+              if (offset < -n / 2) offset += n;
+              return (
                 <img
+                  key={product.id}
                   src={product.image_url}
                   alt=""
                   aria-hidden="true"
-                  className="hero-photo w-full h-full object-cover opacity-60 blur-xl saturate-150"
+                  className="absolute inset-0 w-full h-full object-cover blur-lg opacity-70 saturate-150 transition-transform ease-in-out"
                   style={{
-                    animationDelay: `${i * 1.4}s`,
-                    maskImage: 'linear-gradient(to right, transparent, black 35%, black 65%, transparent)',
-                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 35%, black 65%, transparent)',
+                    transform: `translateX(${offset * 100}%)`,
+                    transitionDuration: '1500ms',
                   }}
                 />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-        <div className="absolute inset-0 bg-secundaria/35"></div>
+        <div className="absolute inset-0 bg-secundaria/40"></div>
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay"></div>
         <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center">
           <h1 className="text-sm md:text-base tracking-[6px] uppercase font-light text-[#D8B4E2] mb-6">Feito à mão com amor</h1>
