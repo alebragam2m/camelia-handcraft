@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useCart } from '../context/CartContext';
 import { useSession } from '../hooks/useSession';
+import { useCatalog } from '../hooks/useCatalog';
+import { formatCurrency } from '../utils/formatCurrency';
 import { supabase } from '../lib/supabase';
 
 function Navbar() {
@@ -25,14 +27,30 @@ function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
+  const { data: catalog = [] } = useCatalog();
+  const searchTerm = searchQuery.trim().toLocaleLowerCase('pt-BR');
+  const suggestions = searchTerm
+    ? catalog.filter(p => (p.nome || '').toLocaleLowerCase('pt-BR').includes(searchTerm)).slice(0, 6)
+    : [];
+
+  const goToSearch = () => {
+    if (!searchQuery.trim()) return;
+    navigate(`/produtos?search=${encodeURIComponent(searchQuery.trim())}`);
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    setIsMenuOpen(false);
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
-    if(searchQuery.trim()) {
-      navigate(`/produtos?search=${encodeURIComponent(searchQuery.trim())}`);
-      setIsSearchOpen(false);
-      setSearchQuery('');
-      setIsMenuOpen(false);
-    }
+    goToSearch();
+  };
+
+  const goToProduct = (id) => {
+    navigate(`/produtos/${id}`);
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    setIsMenuOpen(false);
   };
 
   const navLinks = [
@@ -102,12 +120,12 @@ function Navbar() {
               </button>
 
               {isSearchOpen && (
-                <div className="absolute right-0 top-12 w-64 md:w-72 bg-white shadow-2xl rounded-2xl p-4 border border-gray-100 z-50 animate-fade-in-down">
+                <div className="absolute right-0 top-12 w-64 md:w-80 bg-white shadow-2xl rounded-2xl p-4 border border-gray-100 z-50 animate-fade-in-down">
                   <form onSubmit={handleSearch} className="flex items-center">
-                    <input 
+                    <input
                       autoFocus
-                      type="text" 
-                      placeholder="Pesquisar produtos..." 
+                      type="text"
+                      placeholder="Pesquisar produtos..."
                       className="w-full bg-gray-50 px-4 py-2 rounded-xl text-sm outline-none border border-transparent focus:border-primaria transition-colors"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -116,6 +134,42 @@ function Navbar() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
                     </button>
                   </form>
+
+                  {suggestions.length > 0 && (
+                    <div className="mt-3 max-h-80 overflow-y-auto divide-y divide-gray-50">
+                      {suggestions.map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => goToProduct(p.id)}
+                          className="w-full flex items-center gap-3 py-2.5 text-left hover:bg-gray-50 rounded-lg px-1 transition-colors"
+                        >
+                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center">
+                            {p.image_url ? (
+                              <img src={p.image_url} alt={p.nome} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-sm">🏷️</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-secundaria truncate">{p.nome}</p>
+                            <p className="text-[10px] text-primaria font-bold">{formatCurrency(p.price)}</p>
+                          </div>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={goToSearch}
+                        className="w-full text-center py-2 mt-1 text-[10px] font-bold uppercase tracking-widest text-primaria hover:text-secundaria transition-colors"
+                      >
+                        Ver todos os resultados ❯
+                      </button>
+                    </div>
+                  )}
+
+                  {searchTerm && suggestions.length === 0 && (
+                    <p className="mt-3 text-center text-[11px] text-gray-400 py-2">Nenhum produto encontrado.</p>
+                  )}
                 </div>
               )}
             </div>
