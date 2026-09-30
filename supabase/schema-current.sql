@@ -254,6 +254,9 @@ CREATE POLICY admin_users_owner_update ON public.admin_users FOR UPDATE TO authe
 -- ----------------------------------------------------------------------------
 -- 8. RPCs de auto-atendimento do cliente
 -- ----------------------------------------------------------------------------
+-- DROP necessário quando o RETURNS TABLE muda de forma (Postgres não deixa
+-- CREATE OR REPLACE trocar o formato das colunas de retorno).
+DROP FUNCTION IF EXISTS public.get_sale_by_session(text);
 CREATE OR REPLACE FUNCTION public.get_sale_by_session(p_session_id text)
 RETURNS TABLE (
   id uuid, status text, total_amount numeric, shipping_cost numeric,
@@ -309,6 +312,7 @@ AS $$
 $$;
 GRANT EXECUTE ON FUNCTION public.ensure_own_client_profile(text, text) TO authenticated;
 
+DROP FUNCTION IF EXISTS public.get_my_orders();
 CREATE OR REPLACE FUNCTION public.get_my_orders()
 RETURNS TABLE (
   id uuid, status text, total_amount numeric, shipping_cost numeric,
