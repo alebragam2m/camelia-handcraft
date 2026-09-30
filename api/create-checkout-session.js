@@ -45,6 +45,19 @@ export default async function handler(req, res) {
     bairro: customer.bairro || '', cidade: customer.cidade, estado: customer.estado || '',
   };
 
+  // Frete por tabela (cadastrada pelo admin em shipping_rates) — sem API
+  // externa por enquanto. '*' é a linha de fallback; sem nenhuma linha
+  // cadastrada, frete é 0 (não bloqueia o checkout enquanto o admin não
+  // configurar nada).
+  const uf = (customer.estado || '').trim().toUpperCase();
+  const { data: rates } = await supabase
+    .from('shipping_rates')
+    .select('state, cost')
+    .in('state', uf ? [uf, '*'] : ['*']);
+  const rateByState = new Map((rates || []).map(r => [r.state, r.cost]));
+  const shippingCost = Number(rateByState.get(uf) ?? rateByState.get('*') ?? 0);
+  const shippingCents = Math.round(shippingCost * 100);
+
   // 2. Criar/atualizar o cliente e o pedido (status Pendente) via service role —
   // o navegador não grava mais nessas tabelas diretamente.
   const { data: client, error: clientError } = await supabase
@@ -85,9 +98,9 @@ export default async function handler(req, res) {
       client_id: client.id,
       client_name: customer.nome,
       payment_method: 'Stripe/Cartão-PIX',
-      total_amount: pricing.total / 100,
+      total_amount: (pricing.total + shippingCents) / 100,
       total_cost: pricing.cost / 100,
-      shipping_cost: 0,
+      shipping_cost: shippingCost,
       shipping_address: shippingAddress,
       status: 'Pendente',
     })
@@ -118,6 +131,17 @@ export default async function handler(req, res) {
       },
       quantity: item.quantity,
     }));
+
+    if (shippingCents > 0) {
+      line_items.push({
+        price_data: {
+          currency: 'brl',
+          product_data: { name: 'Frete' },
+          unit_amount: shippingCents,
+        },
+        quantity: 1,
+      });
+    }
 
     // 4. Criar a sessão do Stripe
     // 'payment_method_types: card' — quando ativar PIX no Stripe Dashboard ele aparece automaticamente

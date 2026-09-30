@@ -14,6 +14,7 @@ import DataSync from '../components/DataSync';
 import FinanceModule from '../components/FinanceModule';
 import StockHistoryModule from '../components/StockHistoryModule';
 import SuppliersModule from '../components/SuppliersModule';
+import ShippingRatesModule from '../components/ShippingRatesModule';
 import ProductsModule from '../components/ProductsModule';
 import UsersModule from '../components/UsersModule';
 import SalesModule from '../components/SalesModule';
@@ -136,6 +137,7 @@ export default function AdminDashboard() {
                   { id: 'clientes', label: 'CRM Completo', icon: '🤝' },
                   { id: 'vendas', label: 'Central de Vendas', icon: '💰' },
                   { id: 'fornecedores', label: 'Fornecedores', icon: '🚛', levelRequired: 2 },
+                  { id: 'frete', label: 'Frete', icon: '🚚', levelRequired: 2 },
                   { id: 'financeiro', label: 'Financeiro (DRE)', icon: '🏦', levelRequired: 3 },
                   { id: 'usuarios', label: 'Acessos/RBAC', icon: '👥', levelRequired: 4 },
                 ].map(item => (
@@ -161,6 +163,7 @@ export default function AdminDashboard() {
                  {activeTab === 'clientes' && 'Gestão de Clientes VIPs'}
                  {activeTab === 'vendas' && 'Livro de Registros'}
                  {activeTab === 'fornecedores' && 'Rede de Suprimentos'}
+                 {activeTab === 'frete' && 'Frete por Estado'}
                  {activeTab === 'financeiro' && 'Tesouraria'}
                  {activeTab === 'usuarios' && 'Gestão de Perfis'}
               </h2>
@@ -203,6 +206,7 @@ export default function AdminDashboard() {
               {activeTab === 'financeiro' && canAccessFinance && <FinanceModule />}
               {activeTab === 'estoque' && <StockHistoryModule produtos={products} />}
               {activeTab === 'fornecedores' && <SuppliersModule />}
+              {activeTab === 'frete' && <ShippingRatesModule />}
               {activeTab === 'usuarios' && canAccessFullAdmin && <UsersModule />}
               
               {activeTab === 'vendas' && <SalesModule isAdmin={canAccessFullAdmin} />}

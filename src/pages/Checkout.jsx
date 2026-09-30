@@ -4,11 +4,14 @@ import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
 export default function Checkout() {
   const { cartItems, totalPrice, clearCart, catalogReady } = useCart();
   const [loading, setLoading] = useState(false);
   const [stockErrors, setStockErrors] = useState([]);
   const [user, setUser] = useState(null);
+  const [shippingRates, setShippingRates] = useState([]);
 
 
   const [formData, setFormData] = useState({
@@ -25,7 +28,18 @@ export default function Checkout() {
 
   useEffect(() => {
     checkUser();
+    // Tabela pública de frete por estado — só estimativa de UX; o servidor
+    // recalcula de forma autoritativa em create-checkout-session.js.
+    supabase.from('shipping_rates').select('state, cost').then(({ data }) => {
+      if (data) setShippingRates(data);
+    });
   }, []);
+
+  const shippingEstimate = (() => {
+    const byState = new Map(shippingRates.map(r => [r.state, Number(r.cost)]));
+    const uf = (formData.estado || '').toUpperCase();
+    return byState.get(uf) ?? byState.get('*') ?? 0;
+  })();
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -186,6 +200,13 @@ export default function Checkout() {
               <input required name="cidade" value={formData.cidade} onChange={handleInputChange} className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
             </div>
 
+            <div className="md:col-span-1 space-y-2">
+              <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Estado</label>
+              <select required name="estado" value={formData.estado} onChange={handleInputChange} className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria">
+                {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+              </select>
+            </div>
+
             <div className="md:col-span-2 space-y-2">
               <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Endereço de Entrega</label>
               <input required name="endereco" value={formData.endereco} onChange={handleInputChange} placeholder="Rua, Número, Complemento..." className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
@@ -241,13 +262,16 @@ export default function Checkout() {
                 <span>{cartItems.length}</span>
               </div>
               <div className="flex justify-between items-center text-gray-400 uppercase tracking-widest text-[10px] font-bold">
-                <span>Entrega</span>
-                <span className="text-green-500 font-bold uppercase">Grátis</span>
+                <span>Entrega ({formData.estado})</span>
+                {shippingEstimate > 0
+                  ? <span className="text-secundaria font-bold">{formatCurrency(shippingEstimate)}</span>
+                  : <span className="text-green-500 font-bold uppercase">Grátis</span>}
               </div>
               <div className="flex justify-between items-center pt-4">
                 <span className="font-serif text-3xl font-bold text-primaria">Total</span>
-                <span className="font-serif text-3xl font-bold text-primaria">{formatCurrency(totalPrice)}</span>
+                <span className="font-serif text-3xl font-bold text-primaria">{formatCurrency(totalPrice + shippingEstimate)}</span>
               </div>
+              <p className="text-[9px] text-gray-300 text-center">Frete estimado — o valor final é confirmado no pagamento.</p>
             </div>
           </div>
         </div>

@@ -9,6 +9,39 @@ interface SalesModuleProps {
   isAdmin?: boolean;
 }
 
+const FULFILLMENT_STATUSES = ['Aguardando produção', 'Em produção', 'Enviado', 'Entregue'];
+
+function FulfillmentCell({ sale }: { sale: any }) {
+  const queryClient = useQueryClient();
+  const [trackingCode, setTrackingCode] = useState(sale.tracking_code || '');
+
+  const mutation = useMutation({
+    mutationFn: (payload: { fulfillment_status?: string; tracking_code?: string }) => saleService.updateFulfillment(sale.id, payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sales'] }),
+    onError: (err: Error) => alert(`Erro: ${err.message}`),
+  });
+
+  return (
+    <div className="flex flex-col gap-1.5 min-w-[160px]">
+      <select
+        value={sale.fulfillment_status || FULFILLMENT_STATUSES[0]}
+        onChange={e => mutation.mutate({ fulfillment_status: e.target.value })}
+        className="text-[10px] font-bold uppercase px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-secundaria outline-none cursor-pointer"
+      >
+        {FULFILLMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+      </select>
+      <input
+        type="text"
+        value={trackingCode}
+        onChange={e => setTrackingCode(e.target.value)}
+        onBlur={() => { if (trackingCode !== (sale.tracking_code || '')) mutation.mutate({ tracking_code: trackingCode || null } as any); }}
+        placeholder="Código de rastreio"
+        className="text-[10px] px-2 py-1.5 rounded-lg border border-gray-100 bg-gray-50 text-gray-600 outline-none focus:border-primaria"
+      />
+    </div>
+  );
+}
+
 export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
   const queryClient = useQueryClient();
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
@@ -85,13 +118,14 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cliente</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entrega</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {sales.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic text-sm">Nenhuma venda registrada ainda.</td>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400 italic text-sm">Nenhuma venda registrada ainda.</td>
                 </tr>
               ) : (
                 sales.map((sale: any) => (
@@ -124,6 +158,9 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
                           <span title="Estoque insuficiente no momento da confirmação — verifique manualmente" className="text-amber-500 text-sm cursor-help">⚠️</span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {isSalePaid(sale.status) ? <FulfillmentCell sale={sale} /> : <span className="text-[10px] text-gray-300 italic">—</span>}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">

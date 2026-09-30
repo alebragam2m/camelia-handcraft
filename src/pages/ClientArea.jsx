@@ -228,6 +228,16 @@ function ClientArea() {
                 </div>
               ))}
 
+              {isSalePaid(selectedOrder.status) && (
+                <div className="border-t border-gray-100 pt-3 mt-3">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Status da Entrega</p>
+                  <p className="text-sm font-bold text-secundaria">{selectedOrder.fulfillment_status || 'Aguardando produção'}</p>
+                  {selectedOrder.tracking_code && (
+                    <p className="text-xs text-gray-500 mt-1">Rastreio: <span className="font-bold text-secundaria">{selectedOrder.tracking_code}</span></p>
+                  )}
+                </div>
+              )}
+
               {selectedOrder.shipping_address && (
                 <div className="border-t border-gray-100 pt-3 mt-3">
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Endereço de Entrega</p>
@@ -243,7 +253,9 @@ function ClientArea() {
 
             <div className="bg-gray-50 border-t border-gray-100 px-6 py-4 flex justify-between items-center">
               <div>
-                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Total do Pedido</p>
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">
+                  {Number(selectedOrder.shipping_cost) > 0 ? `Total do Pedido (frete: ${formatCurrency(selectedOrder.shipping_cost)})` : 'Total do Pedido'}
+                </p>
                 <p className="font-serif font-bold text-xl text-emerald-600">{formatCurrency(selectedOrder.total_amount)}</p>
               </div>
               <button onClick={() => setSelectedOrder(null)} className="px-5 py-2 bg-white border border-gray-200 text-gray-500 font-bold rounded-lg uppercase tracking-widest text-[9px] hover:border-secundaria hover:text-secundaria transition-all">

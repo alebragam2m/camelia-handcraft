@@ -46,6 +46,15 @@ export const saleService = {
     if (error) throw new Error(`Erro ao cancelar venda: ${error.message}`);
   },
 
+  /**
+   * Status de produção/envio + código de rastreio — independente de
+   * `status` (pagamento). Colado manualmente pela equipe, sem API externa.
+   */
+  async updateFulfillment(id: string, payload: { fulfillment_status?: string; tracking_code?: string }): Promise<void> {
+    const { error } = await supabase.from('sales').update(payload).eq('id', id);
+    if (error) throw new Error(`Erro ao atualizar status de entrega: ${error.message}`);
+  },
+
   async remove(id: string): Promise<void> {
     // 1. Apagar o lançamento financeiro vinculado (se houver) — senão a
     // receita fica "fantasma" no caixa depois da venda excluída.

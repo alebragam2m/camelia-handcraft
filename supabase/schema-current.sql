@@ -154,6 +154,8 @@ CREATE POLICY sale_items_staff_delete ON public.sale_items FOR DELETE TO authent
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS shipping_address jsonb;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS stock_deducted boolean NOT NULL DEFAULT false;
 ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS stock_conflict boolean NOT NULL DEFAULT false;
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS fulfillment_status text NOT NULL DEFAULT 'Aguardando produção';
+ALTER TABLE public.sales ADD COLUMN IF NOT EXISTS tracking_code text;
 
 -- ----------------------------------------------------------------------------
 -- 5. financial_transactions (nível >=3) + suppliers (nível >=2)
@@ -180,6 +182,32 @@ DROP POLICY IF EXISTS suppliers_update ON public.suppliers;
 DROP POLICY IF EXISTS suppliers_staff_all ON public.suppliers;
 
 CREATE POLICY suppliers_staff_all ON public.suppliers FOR ALL TO authenticated
+  USING (COALESCE(public.current_admin_level(), 0) >= 2)
+  WITH CHECK (COALESCE(public.current_admin_level(), 0) >= 2);
+
+-- ----------------------------------------------------------------------------
+-- 5b. shipping_rates — frete fixo por estado (tabela manual, sem API externa)
+-- ----------------------------------------------------------------------------
+-- Preço de frete não é dado sensível (equivalente a uma tabela pública de
+-- FAQ) — leitura liberada pra anon/authenticated pro Checkout mostrar uma
+-- estimativa antes de pagar; escrita só staff nível >=2 (Estoque/Produção).
+-- state = '*' é a linha de fallback usada quando o estado do endereço não
+-- tem linha própria cadastrada.
+CREATE TABLE IF NOT EXISTS public.shipping_rates (
+  state text UNIQUE NOT NULL,
+  label text,
+  cost numeric NOT NULL,
+  estimated_days integer,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.shipping_rates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS shipping_rates_public_select ON public.shipping_rates;
+DROP POLICY IF EXISTS shipping_rates_staff_write ON public.shipping_rates;
+
+CREATE POLICY shipping_rates_public_select ON public.shipping_rates FOR SELECT
+  TO anon, authenticated USING (true);
+CREATE POLICY shipping_rates_staff_write ON public.shipping_rates FOR ALL TO authenticated
   USING (COALESCE(public.current_admin_level(), 0) >= 2)
   WITH CHECK (COALESCE(public.current_admin_level(), 0) >= 2);
 
@@ -228,13 +256,15 @@ CREATE POLICY admin_users_owner_update ON public.admin_users FOR UPDATE TO authe
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_sale_by_session(p_session_id text)
 RETURNS TABLE (
-  id uuid, status text, total_amount numeric, created_at timestamptz,
+  id uuid, status text, total_amount numeric, shipping_cost numeric,
+  fulfillment_status text, tracking_code text, created_at timestamptz,
   shipping_address jsonb, client_full_name text, client_email text
 )
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT s.id, s.status, s.total_amount, s.created_at, s.shipping_address,
+  SELECT s.id, s.status, s.total_amount, s.shipping_cost,
+         s.fulfillment_status, s.tracking_code, s.created_at, s.shipping_address,
          c.full_name, c.email
   FROM public.sales s
   LEFT JOIN public.clients c ON c.id = s.client_id
@@ -281,13 +311,16 @@ GRANT EXECUTE ON FUNCTION public.ensure_own_client_profile(text, text) TO authen
 
 CREATE OR REPLACE FUNCTION public.get_my_orders()
 RETURNS TABLE (
-  id uuid, status text, total_amount numeric, payment_method text,
+  id uuid, status text, total_amount numeric, shipping_cost numeric,
+  fulfillment_status text, tracking_code text, payment_method text,
   created_at timestamptz, shipping_address jsonb, items jsonb
 )
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT s.id, s.status, s.total_amount, s.payment_method, s.created_at, s.shipping_address,
+  SELECT s.id, s.status, s.total_amount, s.shipping_cost,
+         s.fulfillment_status, s.tracking_code, s.payment_method,
+         s.created_at, s.shipping_address,
          COALESCE(jsonb_agg(jsonb_build_object(
            'id', si.id, 'quantity', si.quantity, 'unit_price', si.unit_price,
            'nome', p.nome, 'image_url', p.image_url
