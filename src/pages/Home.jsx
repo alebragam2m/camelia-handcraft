@@ -30,7 +30,7 @@ function Home() {
                   src={product.image_url}
                   alt=""
                   aria-hidden="true"
-                  className="hero-photo w-full h-full object-cover opacity-30 blur-3xl"
+                  className="hero-photo w-full h-full object-cover opacity-60 blur-xl saturate-150"
                   style={{
                     animationDelay: `${i * 1.4}s`,
                     maskImage: 'linear-gradient(to right, transparent, black 35%, black 65%, transparent)',
@@ -41,7 +41,7 @@ function Home() {
             ))}
           </div>
         )}
-        <div className="absolute inset-0 bg-secundaria/55"></div>
+        <div className="absolute inset-0 bg-secundaria/35"></div>
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay"></div>
         <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center">
           <h1 className="text-sm md:text-base tracking-[6px] uppercase font-light text-[#D8B4E2] mb-6">Feito à mão com amor</h1>
