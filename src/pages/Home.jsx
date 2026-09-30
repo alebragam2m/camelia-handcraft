@@ -6,13 +6,42 @@ import CatalogFeedback from '../components/CatalogFeedback';
 function Home() {
   const { data: products = [], isPending: loading, error } = useCatalog();
   const collections = getCollections(products);
+  const heroPhotos = products.filter(p => p.image_url).slice(0, 6);
 
   return (
     <div className="bg-fundo min-h-screen">
-      
+
       <CatalogFeedback error={error} />
       {/* Hero Section (Fundo Roxo Escuro Mantido conforme aprovação) */}
       <section className="relative bg-secundaria text-branco py-32 px-6 lg:px-12 flex flex-col items-center justify-center text-center overflow-hidden">
+        {heroPhotos.length > 0 && (
+          <div className="absolute inset-0 flex">
+            <style>{`
+              @keyframes heroKenBurns { from { transform: scale(1.15); } to { transform: scale(1.32); } }
+              .hero-photo { animation: heroKenBurns 22s ease-in-out infinite alternate; }
+              @media (prefers-reduced-motion: reduce) { .hero-photo { animation: none; } }
+            `}</style>
+            {heroPhotos.map((product, i) => (
+              <div
+                key={product.id}
+                className={`relative flex-1 h-full overflow-hidden ${i >= 3 ? 'hidden sm:block' : ''} ${i >= 5 ? 'hidden lg:block' : ''}`}
+              >
+                <img
+                  src={product.image_url}
+                  alt=""
+                  aria-hidden="true"
+                  className="hero-photo w-full h-full object-cover opacity-30 blur-3xl"
+                  style={{
+                    animationDelay: `${i * 1.4}s`,
+                    maskImage: 'linear-gradient(to right, transparent, black 35%, black 65%, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 35%, black 65%, transparent)',
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="absolute inset-0 bg-secundaria/55"></div>
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] mix-blend-overlay"></div>
         <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center">
           <h1 className="text-sm md:text-base tracking-[6px] uppercase font-light text-[#D8B4E2] mb-6">Feito à mão com amor</h1>
