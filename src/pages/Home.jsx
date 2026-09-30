@@ -40,7 +40,7 @@ function Home() {
                   src={product.image_url}
                   alt=""
                   aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover blur-lg opacity-70 saturate-150 transition-transform ease-in-out"
+                  className="absolute inset-0 w-full h-full object-cover blur-md opacity-70 saturate-150 transition-transform ease-in-out"
                   style={{
                     transform: `translateX(${offset * 100}%)`,
                     transitionDuration: '1500ms',
