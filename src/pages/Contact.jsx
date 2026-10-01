@@ -1,6 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 function Contact() {
+  const [form, setForm] = useState({ name: '', email: '', message: '' });
+  const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus('sending');
+    setErrorMessage('');
+    try {
+      const res = await fetch('/api/send-contact-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || 'Não foi possível enviar sua mensagem.');
+      }
+      setStatus('sent');
+      setForm({ name: '', email: '', message: '' });
+    } catch (err) {
+      setStatus('error');
+      setErrorMessage(err.message || 'Não foi possível enviar sua mensagem.');
+    }
+  };
+
   return (
     <div className="bg-fundo min-h-screen relative overflow-hidden">
       {/* Subtle body cross pattern */}
@@ -26,20 +56,29 @@ function Contact() {
             <h2 className="text-2xl font-serif font-bold text-secundaria mb-2">Envie uma Mensagem</h2>
             <p className="text-gray-500 text-sm mb-8 font-light">Tire suas dúvidas ou solicite um orçamento exclusivo.</p>
             
-            <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); alert("Em breve: Integração para enviar e-mails!");}}>
-              <div>
-                <input type="text" placeholder="Seu Nome Completo" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
+            {status === 'sent' ? (
+              <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl p-6 text-center font-medium">
+                Mensagem enviada! Responderemos no seu e-mail em breve. 💌
               </div>
-              <div>
-                <input type="email" placeholder="Seu E-mail Corporativo" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
-              </div>
-              <div>
-                <textarea rows="4" placeholder="Sua Mensagem Detalhada" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700 resize-none" required></textarea>
-              </div>
-              <button type="submit" className="w-full bg-primaria text-white font-bold uppercase tracking-widest text-xs py-5 rounded-xl hover:bg-[#5556A0] transition-transform hover:-translate-y-1 mt-2 shadow-lg hover:shadow-primaria/40">
-                Enviar E-mail
-              </button>
-            </form>
+            ) : (
+              <form className="space-y-6" onSubmit={handleSubmit}>
+                <div>
+                  <input type="text" name="name" value={form.name} onChange={handleChange} placeholder="Seu Nome Completo" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
+                </div>
+                <div>
+                  <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Seu E-mail" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
+                </div>
+                <div>
+                  <textarea rows="4" name="message" value={form.message} onChange={handleChange} placeholder="Sua Mensagem Detalhada" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700 resize-none" required></textarea>
+                </div>
+                {status === 'error' && (
+                  <p className="text-rose-600 text-sm font-medium">{errorMessage}</p>
+                )}
+                <button type="submit" disabled={status === 'sending'} className="w-full bg-primaria text-white font-bold uppercase tracking-widest text-xs py-5 rounded-xl hover:bg-[#5556A0] transition-transform hover:-translate-y-1 mt-2 shadow-lg hover:shadow-primaria/40 disabled:opacity-60 disabled:hover:translate-y-0">
+                  {status === 'sending' ? 'Enviando...' : 'Enviar E-mail'}
+                </button>
+              </form>
+            )}
           </div>
 
           {/* Dados de Contato Direto */}
