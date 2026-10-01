@@ -55,7 +55,14 @@ export default function SuppliersModule() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => supplierService.remove(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['suppliers'] }),
+    onError: (err: any) => {
+      if (err?.code === '23503') {
+        alert('Não é possível excluir: existem produtos cadastrados com este fornecedor. Troque o fornecedor desses produtos antes de excluí-lo.');
+      } else {
+        alert(`Erro ao excluir: ${err?.message || err}`);
+      }
+    },
   });
 
   const onFormSubmit = (data: SupplierFormValues) => {

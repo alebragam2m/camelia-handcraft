@@ -58,6 +58,7 @@ export default function ProductForm({ product, onClose, initialCategory }: Produ
       queryClient.invalidateQueries({ queryKey: ['catalog'] });
       onClose();
     },
+    onError: (err: Error) => alert(`Erro ao salvar produto: ${err.message}`),
   });
 
   const category = watch('category');

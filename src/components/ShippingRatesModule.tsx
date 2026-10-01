@@ -28,6 +28,7 @@ export default function ShippingRatesModule() {
   const deleteMutation = useMutation({
     mutationFn: (state: string) => shippingRateService.remove(state),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shipping-rates'] }),
+    onError: (err: Error) => alert(`Erro ao excluir: ${err.message}`),
   });
 
   const usedStates = new Set(rates.map(r => r.state));

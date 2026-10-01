@@ -32,7 +32,8 @@ export default function UsersModule() {
       const { error } = await supabase.from('admin_users').update({ is_active: !user.is_active }).eq('id', user.id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    onError: (err: Error) => alert(`Erro: ${err.message}`),
   });
 
   const levelMutation = useMutation({
@@ -40,7 +41,8 @@ export default function UsersModule() {
       const { error } = await supabase.from('admin_users').update({ access_level: level }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    onError: (err: Error) => alert(`Erro: ${err.message}`),
   });
 
   return (

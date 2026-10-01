@@ -61,7 +61,14 @@ export default function ProductsModule() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['catalog'] });
       closeModal();
-    }
+    },
+    onError: (err: any) => {
+      if (err?.code === '23503') {
+        alert('Não é possível excluir: este produto já tem vendas registradas no histórico (excluí-lo apagaria o detalhamento dessas vendas). Para tirá-lo do site sem perder o histórico, abra o produto e desmarque "Mostrar no site".');
+      } else {
+        alert(`Erro ao excluir produto: ${err?.message || err}`);
+      }
+    },
   });
 
   const closeModal = () => {

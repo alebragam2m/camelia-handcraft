@@ -15,7 +15,7 @@ async function fetchClientAreaData() {
   // Verificação de Admin
   const { data: adminRecord } = await supabase
     .from('admin_users')
-    .select('access_level')
+    .select('access_level, is_active')
     .eq('auth_user_id', user.id)
     .single();
 
@@ -47,7 +47,7 @@ async function fetchClientAreaData() {
     orders = saleData || [];
   }
 
-  return { user, isAdmin: !!adminRecord, clientData: client, orders };
+  return { user, isAdmin: !!adminRecord?.is_active, clientData: client, orders };
 }
 
 // Ícones SVG

@@ -69,12 +69,14 @@ export default function FinanceModule() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => financialService.remove(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+    onError: (err: Error) => alert(`Erro ao apagar: ${err.message}`),
   });
 
   const markAsPaidMutation = useMutation({
     mutationFn: (id: string) => financialService.save({ status: 'Pago', payment_date: todayStr }, id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+    onError: (err: Error) => alert(`Erro ao dar baixa: ${err.message}`),
   });
 
   // Cálculos Financeiros
