@@ -5,12 +5,43 @@ import { getCollections } from '../lib/catalog';
 import CatalogFeedback from '../components/CatalogFeedback';
 
 const HERO_SLIDE_INTERVAL_MS = 5000;
+const HERO_CACHE_KEY = 'camelia_hero_photos_v1';
+
+function readHeroPhotoCache() {
+  try {
+    const raw = localStorage.getItem(HERO_CACHE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function Home() {
   const { data: products = [], isPending: loading, error } = useCatalog();
   const collections = getCollections(products);
-  const heroPhotos = products.filter(p => p.image_url).slice(0, 4);
+  const liveHeroPhotos = products.filter(p => p.image_url).slice(0, 4);
+  const [cachedHeroPhotos] = useState(readHeroPhotoCache);
+  // Numa atualização de página o catálogo ainda não chegou do Supabase —
+  // usamos as últimas fotos conhecidas (localStorage) pra o hero já nascer
+  // com imagens em vez do fundo roxo liso por 1-2s até a rede responder.
+  const heroPhotos = liveHeroPhotos.length > 0 ? liveHeroPhotos : cachedHeroPhotos;
+  const liveHeroPhotoIds = liveHeroPhotos.map(p => p.id).join(',');
   const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    if (liveHeroPhotos.length > 0) {
+      try {
+        localStorage.setItem(
+          HERO_CACHE_KEY,
+          JSON.stringify(liveHeroPhotos.map(p => ({ id: p.id, image_url: p.image_url })))
+        );
+      } catch {
+        // localStorage indisponível (modo privado/quota) — sem problema, só perde o cache
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-executar só quando o CONJUNTO de fotos muda, não a cada novo array do useQuery
+  }, [liveHeroPhotoIds]);
 
   useEffect(() => {
     if (heroPhotos.length < 2) return;
