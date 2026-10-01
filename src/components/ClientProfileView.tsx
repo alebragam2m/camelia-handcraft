@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Client } from '../types/supabase';
 import { formatCurrency } from '../utils/formatCurrency';
 import { isSalePaid } from '../lib/saleStatus';

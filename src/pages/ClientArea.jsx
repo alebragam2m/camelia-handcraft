@@ -1,75 +1,87 @@
 import { formatCurrency } from '../utils/formatCurrency';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { isSalePaid } from '../lib/saleStatus';
 import './Auth.css';
 
+const CLIENT_COLUMNS = 'id, full_name, email, phone, cep, address, address_number, neighborhood, city, state';
+
+async function fetchClientAreaData() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { user: null, isAdmin: false, clientData: null, orders: [] };
+
+  // Verificação de Admin
+  const { data: adminRecord } = await supabase
+    .from('admin_users')
+    .select('access_level')
+    .eq('auth_user_id', user.id)
+    .single();
+
+  let { data: client } = await supabase
+    .from('clients')
+    .select(CLIENT_COLUMNS)
+    .eq('email', user.email)
+    .maybeSingle();
+
+  if (!client) {
+    // Primeiro acesso sem cadastro prévio (ex. login social ou e-mail
+    // confirmado sem checkout anterior) — cria o registro agora.
+    await supabase.rpc('ensure_own_client_profile', {
+      p_full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+    });
+    ({ data: client } = await supabase
+      .from('clients')
+      .select(CLIENT_COLUMNS)
+      .eq('email', user.email)
+      .maybeSingle());
+  }
+
+  let orders = [];
+  if (client) {
+    // Fetch orders (com itens + produto, para o detalhamento clicável).
+    // RPC dedicada: um cliente comum não tem permissão de leitura direta
+    // em `products`, e storefront_products só lista o catálogo atual.
+    const { data: saleData } = await supabase.rpc('get_my_orders');
+    orders = saleData || [];
+  }
+
+  return { user, isAdmin: !!adminRecord, clientData: client, orders };
+}
+
+// Ícones SVG
+const IconUser = () => (
+  <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+);
+const IconMap = () => (
+  <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+);
+const IconBox = () => (
+  <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+);
+const IconSettings = () => (
+  <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+);
+
 function ClientArea() {
   const [activeTab, setActiveTab] = useState('pedidos');
-  const [user, setUser] = useState(null);
-  const [clientData, setClientData] = useState(null);
-  const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['clientAreaData'],
+    queryFn: fetchClientAreaData,
+  });
+
+  const user = data?.user ?? null;
+  const isAdmin = data?.isAdmin ?? false;
+  const clientData = data?.clientData ?? null;
+  const orders = data?.orders ?? [];
+
   useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  const fetchUserData = async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    setUser(user);
-
-    // Verificação de Admin
-    const { data: adminRecord } = await supabase
-      .from('admin_users')
-      .select('access_level')
-      .eq('auth_user_id', user.id)
-      .single();
-
-    if (adminRecord) setIsAdmin(true);
-
-    // Fetch client record — lista explícita de colunas: exclui internal_notes/is_vip
-    const clientColumns = 'id, full_name, email, phone, cep, address, address_number, neighborhood, city, state';
-    let { data: client } = await supabase
-      .from('clients')
-      .select(clientColumns)
-      .eq('email', user.email)
-      .maybeSingle();
-
-    if (!client) {
-      // Primeiro acesso sem cadastro prévio (ex. login social ou e-mail
-      // confirmado sem checkout anterior) — cria o registro agora.
-      await supabase.rpc('ensure_own_client_profile', {
-        p_full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-      });
-      ({ data: client } = await supabase
-        .from('clients')
-        .select(clientColumns)
-        .eq('email', user.email)
-        .maybeSingle());
-    }
-
-    if (client) {
-      setClientData(client);
-
-      // Fetch orders (com itens + produto, para o detalhamento clicável).
-      // RPC dedicada: um cliente comum não tem permissão de leitura direta
-      // em `products`, e storefront_products só lista o catálogo atual.
-      const { data: saleData } = await supabase.rpc('get_my_orders');
-
-      if (saleData) setOrders(saleData);
-    }
-    setLoading(false);
-  };
+    if (data && !data.user) navigate('/login');
+  }, [data, navigate]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -88,20 +100,6 @@ function ClientArea() {
     if (error) alert("Erro ao atualizar!");
     else alert("Dados atualizados com sucesso!");
   };
-
-  // Ícones SVG
-  const IconUser = () => (
-    <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-  );
-  const IconMap = () => (
-    <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-  );
-  const IconBox = () => (
-    <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-  );
-  const IconSettings = () => (
-    <svg className="menu-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-  );
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-fundo">Carregando seus detalhes...</div>;
 

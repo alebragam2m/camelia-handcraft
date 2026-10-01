@@ -182,7 +182,7 @@ export default function ProductsModule() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {(activeLine === 'Ver Tudo' ? filteredProducts : productsInLine).map(prod => (
+              {(activeLine === 'Ver Tudo' ? filteredProducts : productsInLine).map((prod: Product) => (
                 <div key={prod.id} onClick={() => openEditMode(prod)} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer group hover:shadow-lg transition-all">
                   <div className="w-full h-40 bg-gray-50 flex items-center justify-center text-4xl border-b overflow-hidden">
                     {prod.image_url ? <img src={prod.image_url} alt={prod.nome} className="w-full h-full object-cover group-hover:scale-105 transition-all" /> : CATEGORY_ICONS[activeLine || 'Diversos']}

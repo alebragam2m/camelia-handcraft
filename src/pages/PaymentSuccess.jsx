@@ -1,24 +1,16 @@
 import { formatCurrency } from '../utils/formatCurrency';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !!sessionId);
   const [sale, setSale] = useState(null);
   const [fetchError, setFetchError] = useState(false);
 
-  useEffect(() => {
-    if (sessionId) {
-      fetchSaleBySession();
-    } else {
-      setLoading(false);
-    }
-  }, [sessionId]);
-
-  const fetchSaleBySession = async () => {
+  const fetchSaleBySession = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .rpc('get_sale_by_session', { p_session_id: sessionId })
@@ -36,7 +28,13 @@ export default function PaymentSuccess() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (sessionId) {
+      fetchSaleBySession();
+    }
+  }, [sessionId, fetchSaleBySession]);
 
   const clientName = sale?.client_full_name || 'Cliente';
 

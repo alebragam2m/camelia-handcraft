@@ -7,21 +7,17 @@ function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [errorInput, setErrorInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { session, loading: sessionLoading } = useSession();
-
-  useEffect(() => {
+  const [errorInput, setErrorInput] = useState(() => {
     const params = new URLSearchParams(location.search);
     const errCode = params.get('error');
-    if (errCode === 'no_rbac') {
-      setErrorInput('Acesso Negado: Perfil não possui permissões administrativas.');
-    } else if (errCode === 'inactive') {
-      setErrorInput('Acesso Negado: Seu perfil administrativo está inativo.');
-    }
-  }, [location.search]);
+    if (errCode === 'no_rbac') return 'Acesso Negado: Perfil não possui permissões administrativas.';
+    if (errCode === 'inactive') return 'Acesso Negado: Seu perfil administrativo está inativo.';
+    return '';
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Quem já está logado não deve ver o formulário de novo — manda direto
