@@ -347,19 +347,17 @@ DROP FUNCTION IF EXISTS public.handle_new_admin_user();
 -- ----------------------------------------------------------------------------
 -- 10. Storage
 -- ----------------------------------------------------------------------------
+-- Buckets 'products' e 'camelia-images' consolidados em 'product-images'
+-- (único bucket usado pelo upload atual, productService.uploadImage). Todos
+-- os arquivos já foram migrados para product-images/migrated/<bucket antigo>/...
+-- e as URLs das linhas de products já apontam pro novo caminho — ver
+-- migração de 2026-10-01. As policies de escrita abaixo são removidas para
+-- impedir novos uploads nos buckets antigos; a leitura pública permanece
+-- (os arquivos originais ainda não foram apagados dos buckets antigos).
 DROP POLICY IF EXISTS "Admin Upload Products" ON storage.objects;
 DROP POLICY IF EXISTS "Admin Update Products" ON storage.objects;
-CREATE POLICY "Admin Upload Products" ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'products');
-CREATE POLICY "Admin Update Products" ON storage.objects FOR UPDATE TO authenticated
-  USING (bucket_id = 'products');
-
 DROP POLICY IF EXISTS "Auth Insert" ON storage.objects;
 DROP POLICY IF EXISTS "Auth Update" ON storage.objects;
-CREATE POLICY "Auth Insert" ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'camelia-images');
-CREATE POLICY "Auth Update" ON storage.objects FOR UPDATE TO authenticated
-  USING (bucket_id = 'camelia-images');
 -- product-images e as policies só-leitura já estão corretas — não tocadas.
 
 -- ----------------------------------------------------------------------------
