@@ -52,7 +52,7 @@ export default function ProductForm({ product, onClose, initialCategory }: Produ
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) => productService.save(data, product?.id),
+    mutationFn: (data: any) => productService.save(data, product?.id, product?.stock),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['catalog'] });
@@ -352,10 +352,10 @@ export default function ProductForm({ product, onClose, initialCategory }: Produ
           <div className="pt-8 mb-4">
             <button 
               type="submit" 
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || uploadingImage || isCropping}
               className="w-full bg-secundaria text-white font-bold py-5 rounded-2xl uppercase tracking-widest text-sm hover:bg-black transition-all shadow-xl active:scale-95 disabled:bg-gray-300 transform"
             >
-              {mutation.isPending ? 'Sincronizando...' : product ? 'Salvar Mudanças' : 'Cadastrar na Camélia'}
+              {uploadingImage || isCropping ? 'Processando fotos...' : mutation.isPending ? 'Sincronizando...' : product ? 'Salvar Mudanças' : 'Cadastrar na Camélia'}
             </button>
             {product && (
                <p className="text-center text-[9px] text-gray-300 mt-4 uppercase tracking-widest">ID: {product.id}</p>

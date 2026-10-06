@@ -9,7 +9,7 @@ const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','P
 export default function ShippingRatesModule() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState<Partial<ShippingRate>>({ state: '*', label: '', cost: 0, estimated_days: null });
+  const [form, setForm] = useState<Omit<Partial<ShippingRate>, 'cost'> & { cost?: number | string }>({ state: '*', label: '', cost: '', estimated_days: null });
 
   const { data: rates = [], isLoading: loading } = useQuery({
     queryKey: ['shipping-rates'],
@@ -35,15 +35,21 @@ export default function ShippingRatesModule() {
   const availableStates = ['*', ...UFS].filter(uf => !usedStates.has(uf));
 
   const openModal = (rate?: ShippingRate) => {
-    setForm(rate ? { ...rate } : { state: availableStates[0] || '*', label: '', cost: 0, estimated_days: null });
+    setForm(rate ? { ...rate } : { state: availableStates[0] || '*', label: '', cost: '', estimated_days: null });
     setIsModalOpen(true);
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedCost = String(form.cost ?? '').trim().replace(',', '.');
+    const cost = Number(normalizedCost);
+    if (normalizedCost === '' || !Number.isFinite(cost) || cost < 0) {
+      alert('Informe um valor de frete válido. Use 0 somente para frete grátis.');
+      return;
+    }
     saveMutation.mutate({
       ...form,
-      cost: Number(form.cost) || 0,
+      cost,
       estimated_days: form.estimated_days ? Number(form.estimated_days) : null,
     });
   };
@@ -78,7 +84,7 @@ export default function ShippingRatesModule() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {rates.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic text-sm">Nenhum frete cadastrado — checkout cobra R$ 0,00 até que você configure ao menos a linha padrão (*).</td></tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400 italic text-sm">Nenhum frete cadastrado — configure uma tarifa por estado ou a linha padrão (*) para habilitar a entrega. Para frete grátis, cadastre explicitamente o valor zero.</td></tr>
               ) : (
                 rates.map(rate => (
                   <tr key={rate.state} className="hover:bg-gray-50/50 transition-colors">
@@ -131,7 +137,15 @@ export default function ShippingRatesModule() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Valor (R$)</label>
-                    <input type="number" step="0.01" min="0" value={form.cost ?? 0} onChange={e => setForm(f => ({ ...f, cost: Number(e.target.value) }))} className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 font-bold text-secundaria" />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={form.cost ?? ''}
+                      onChange={e => setForm(f => ({ ...f, cost: e.target.value }))}
+                      placeholder="Ex: 24,90"
+                      required
+                      className="w-full p-4 bg-gray-50 rounded-xl border border-gray-100 font-bold text-secundaria"
+                    />
                   </div>
                   <div>
                     <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Prazo (dias)</label>

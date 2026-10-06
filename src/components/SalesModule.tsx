@@ -4,6 +4,7 @@ import { saleService } from '../services/saleService';
 import { formatCurrency } from '../utils/formatCurrency';
 import { isSalePaid, isSaleCancelled, saleStatusLabel } from '../lib/saleStatus';
 import ManualSaleModal from './ManualSaleModal';
+import SaleReceipt from './SaleReceipt';
 
 interface SalesModuleProps {
   isAdmin?: boolean;
@@ -13,19 +14,30 @@ const FULFILLMENT_STATUSES = ['Aguardando produção', 'Em produção', 'Enviado
 
 function FulfillmentCell({ sale }: { sale: any }) {
   const queryClient = useQueryClient();
+  const [fulfillmentStatus, setFulfillmentStatus] = useState(sale.fulfillment_status || FULFILLMENT_STATUSES[0]);
   const [trackingCode, setTrackingCode] = useState(sale.tracking_code || '');
+  const [saved, setSaved] = useState(false);
+  const isDirty = fulfillmentStatus !== (sale.fulfillment_status || FULFILLMENT_STATUSES[0])
+    || trackingCode !== (sale.tracking_code || '');
 
   const mutation = useMutation({
-    mutationFn: (payload: { fulfillment_status?: string; tracking_code?: string }) => saleService.updateFulfillment(sale.id, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sales'] }),
+    mutationFn: () => saleService.updateFulfillment(sale.id, {
+      fulfillment_status: fulfillmentStatus,
+      tracking_code: trackingCode.trim() || null,
+    }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['sales'] });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    },
     onError: (err: Error) => alert(`Erro: ${err.message}`),
   });
 
   return (
     <div className="flex flex-col gap-1.5 min-w-[160px]">
       <select
-        value={sale.fulfillment_status || FULFILLMENT_STATUSES[0]}
-        onChange={e => mutation.mutate({ fulfillment_status: e.target.value })}
+        value={fulfillmentStatus}
+        onChange={e => { setFulfillmentStatus(e.target.value); setSaved(false); }}
         className="text-[10px] font-bold uppercase px-2 py-1.5 rounded-lg border border-gray-200 bg-white text-secundaria outline-none cursor-pointer"
       >
         {FULFILLMENT_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -33,11 +45,18 @@ function FulfillmentCell({ sale }: { sale: any }) {
       <input
         type="text"
         value={trackingCode}
-        onChange={e => setTrackingCode(e.target.value)}
-        onBlur={() => { if (trackingCode !== (sale.tracking_code || '')) mutation.mutate({ tracking_code: trackingCode || null } as any); }}
+        onChange={e => { setTrackingCode(e.target.value); setSaved(false); }}
         placeholder="Código de rastreio"
         className="text-[10px] px-2 py-1.5 rounded-lg border border-gray-100 bg-gray-50 text-gray-600 outline-none focus:border-primaria"
       />
+      <button
+        type="button"
+        onClick={() => mutation.mutate()}
+        disabled={!isDirty || mutation.isPending}
+        className="text-[9px] font-bold uppercase tracking-widest px-2 py-1.5 rounded-lg bg-secundaria text-white disabled:bg-gray-100 disabled:text-gray-400 transition-colors"
+      >
+        {mutation.isPending ? 'Salvando...' : saved ? 'Salvo' : 'Salvar entrega'}
+      </button>
     </div>
   );
 }
@@ -45,6 +64,7 @@ function FulfillmentCell({ sale }: { sale: any }) {
 export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
   const queryClient = useQueryClient();
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
+  const [receiptSaleId, setReceiptSaleId] = useState<string | null>(null);
 
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ['sales'],
@@ -71,7 +91,7 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
 
   const handleDelete = (e: React.MouseEvent, sale: any) => {
     e.stopPropagation();
-    const clientName = sale.clients?.full_name || 'Consumidor Final';
+    const clientName = sale.client_name || sale.clients?.full_name || 'Consumidor Final';
     const valor = formatCurrency(sale.total_amount);
     const data = new Date(sale.created_at).toLocaleDateString('pt-BR');
     if (window.confirm(`⚠️ Apagar venda permanentemente?\n\nCliente: ${clientName}\nValor: ${valor}\nData: ${data}\n\nEssa ação é irreversível.`)) {
@@ -81,7 +101,7 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
 
   const handleCancel = (e: React.MouseEvent, sale: any) => {
     e.stopPropagation();
-    const clientName = sale.clients?.full_name || 'Consumidor Final';
+    const clientName = sale.client_name || sale.clients?.full_name || 'Consumidor Final';
     if (window.confirm(`Cancelar venda de ${clientName}?\n\nDevolve o estoque (se já baixado) e remove o lançamento financeiro. A venda continua no histórico como "Cancelada". Não estorna o pagamento na Stripe — isso é feito à parte.`)) {
       cancelMutation.mutate(sale.id);
     }
@@ -92,6 +112,7 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
   return (
     <div className="space-y-6 animate-fade-in">
 
+      {receiptSaleId && sales.find(sale => sale.id === receiptSaleId) && <SaleReceipt sale={sales.find(sale => sale.id === receiptSaleId)} onClose={() => setReceiptSaleId(null)} />}
       {/* MODAL DE NOVA VENDA */}
       {isNewSaleOpen && <ManualSaleModal onClose={() => setIsNewSaleOpen(false)} />}
 
@@ -138,7 +159,7 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
                       <div className="flex items-center gap-2">
                         <span className="text-lg">👤</span>
                         <div>
-                          <p className="text-xs font-bold text-secundaria">{sale.clients?.full_name || 'Consumidor Final'}</p>
+                          <p className="text-xs font-bold text-secundaria">{sale.client_name || sale.clients?.full_name || 'Consumidor Final'}</p>
                           {sale.clients?.is_vip && <span className="text-[8px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tighter">VIP Camélia</span>}
                         </div>
                       </div>
@@ -164,9 +185,9 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <button className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Ver Recibo ❯</button>
+                        <button onClick={() => setReceiptSaleId(sale.id)} className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Ver Recibo ❯</button>
 
-                        {!isSaleCancelled(sale.status) && (
+                        {!sale.checkout_managed && !isSaleCancelled(sale.status) && (
                           <button
                             onClick={(e) => handleCancel(e, sale)}
                             disabled={cancelMutation.isPending}
@@ -177,8 +198,9 @@ export default function SalesModule({ isAdmin = false }: SalesModuleProps) {
                           </button>
                         )}
 
+                        {sale.checkout_managed && <span className="text-xs text-gray-500">Cancelamento online: consultar Stripe</span>}
                         {/* BOTÃO DE EXCLUSÃO — SOMENTE ADMIN (nível 4) */}
-                        {isAdmin && (
+                        {isAdmin && !sale.checkout_managed && (
                           <button
                             onClick={(e) => handleDelete(e, sale)}
                             disabled={deleteMutation.isPending}

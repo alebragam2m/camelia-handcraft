@@ -1,5 +1,5 @@
 export const ADMIN_SYNC_TABLES = {
-  products: ['products'], clients: ['clients'], sales: ['sales'],
+  shipping_rates: ['shipping-rates'], products: ['products'], clients: ['clients'], sales: ['sales'],
   sale_items: ['sales'], inventory_logs: ['stock-logs', 'products'],
   suppliers: ['suppliers'], financial_transactions: ['transactions'],
   admin_users: ['admin-users', 'admin-access'],

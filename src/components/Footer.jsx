@@ -82,7 +82,6 @@ function Footer() {
             <span className="text-[10px] uppercase font-bold tracking-widest text-[#D8B4E2] mr-2">Pagamento Seguro</span>
             <img src="https://api.iconify.design/logos:visa.svg" className="h-6 w-auto" alt="Visa" />
             <img src="https://api.iconify.design/logos:mastercard.svg" className="h-6 w-auto ml-1" alt="Mastercard" />
-            <img src="https://api.iconify.design/simple-icons:pix.svg?color=%2332bcad" className="h-6 w-auto ml-2" alt="Pix" />
           </div>
         </div>
       </div>

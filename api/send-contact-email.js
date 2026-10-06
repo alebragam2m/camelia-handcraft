@@ -10,6 +10,12 @@ function sanitizeHeaderValue(value) {
   return value.replace(/[\r\n]+/g, ' ').trim();
 }
 
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  })[char]);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
@@ -28,6 +34,13 @@ export default async function handler(req, res) {
   }
 
   const safeName = sanitizeHeaderValue(name);
+  const safeEmail = sanitizeHeaderValue(email);
+  const safeMessage = message.trim();
+
+  if (!process.env.RESEND_API_KEY) {
+    console.error('[send-contact-email] RESEND_API_KEY não configurada.');
+    return res.status(503).json({ message: 'O canal de e-mail está temporariamente indisponível. Fale conosco pelo WhatsApp.' });
+  }
 
   try {
     const resendRes = await fetch('https://api.resend.com/emails', {
@@ -37,11 +50,32 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Camélia Handcraft <contato@cameliahandcraft.com.br>',
+        from: 'Site Camélia <site@cameliahandcraft.com.br>',
         to: ['ola@cameliahandcraft.com.br'],
-        reply_to: email,
+        reply_to: safeEmail,
         subject: `Nova mensagem de contato — ${safeName}`,
-        text: `Nome: ${safeName}\nE-mail: ${email}\n\nMensagem:\n${message}`,
+        text: `Nome: ${safeName}\nE-mail: ${safeEmail}\n\nMensagem:\n${safeMessage}`,
+        html: `
+          <div style="background:#f8f8fc;padding:32px;font-family:Arial,sans-serif;color:#2d2b52">
+            <div style="max-width:600px;margin:auto;background:#fff;border-radius:24px;overflow:hidden;border:1px solid #eeeef6">
+              <div style="background:#2d2b52;padding:20px 28px;color:#fff">
+                <img
+                  src="https://www.cameliahandcraft.com.br/logo-branca.png"
+                  width="110"
+                  alt="Camélia Handcraft"
+                  style="display:block;width:110px;max-width:100%;height:auto;margin:0 0 12px;border:0"
+                />
+                <h1 style="margin:0;font-family:Georgia,serif;font-size:22px;line-height:1.25">Nova mensagem pelo site</h1>
+              </div>
+              <div style="padding:32px">
+                <p style="margin:0 0 8px;font-size:12px;color:#8b8b9e;text-transform:uppercase;letter-spacing:1px">Cliente</p>
+                <p style="margin:0 0 4px;font-size:18px;font-weight:bold">${escapeHtml(safeName)}</p>
+                <p style="margin:0 0 28px;color:#666">${escapeHtml(safeEmail)}</p>
+                <p style="margin:0 0 8px;font-size:12px;color:#8b8b9e;text-transform:uppercase;letter-spacing:1px">Mensagem</p>
+                <div style="white-space:pre-wrap;line-height:1.7;background:#f8f8fc;padding:20px;border-radius:14px">${escapeHtml(safeMessage)}</div>
+              </div>
+            </div>
+          </div>`,
       }),
     });
 

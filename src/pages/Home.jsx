@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useCatalog } from '../hooks/useCatalog';
 import { getCollections } from '../lib/catalog';
 import CatalogFeedback from '../components/CatalogFeedback';
+import { formatCurrency } from '../utils/formatCurrency';
 
 const HERO_SLIDE_INTERVAL_MS = 5000;
 const HERO_CACHE_KEY = 'camelia_hero_photos_v1';
@@ -180,6 +181,27 @@ function Home() {
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p className="text-xs tracking-[4px] uppercase text-gray-400 mb-3 font-medium">Catálogo</p>
           <h2 className="text-4xl font-serif font-bold text-secundaria mb-12">Todos os Produtos</h2>
+          {products.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 text-left">
+              {products.slice(0, 4).map(product => (
+                <Link
+                  to={`/produtos/${product.id}`}
+                  key={product.id}
+                  className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:-translate-y-1 hover:shadow-lg transition-all"
+                >
+                  <img
+                    src={product.image_url || '/logo.png'}
+                    alt={product.nome}
+                    className="w-full h-52 object-cover"
+                  />
+                  <div className="p-5">
+                    <h3 className="font-bold text-secundaria text-sm mb-2">{product.nome}</h3>
+                    <p className="text-primaria font-bold">{formatCurrency(product.price)}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
           <Link to="/produtos" className="inline-block border-2 border-primaria text-primaria font-bold uppercase tracking-widest text-sm px-10 py-3 rounded-full hover:bg-primaria hover:text-branco transition duration-300">
             Explorar Catálogo Visual
           </Link>

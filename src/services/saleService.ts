@@ -50,7 +50,7 @@ export const saleService = {
    * Status de produção/envio + código de rastreio — independente de
    * `status` (pagamento). Colado manualmente pela equipe, sem API externa.
    */
-  async updateFulfillment(id: string, payload: { fulfillment_status?: string; tracking_code?: string }): Promise<void> {
+  async updateFulfillment(id: string, payload: { fulfillment_status?: string; tracking_code?: string | null }): Promise<void> {
     const { error } = await supabase.from('sales').update(payload).eq('id', id);
     if (error) throw new Error(`Erro ao atualizar status de entrega: ${error.message}`);
   },

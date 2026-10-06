@@ -22,7 +22,10 @@ function Signup() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: nome } },
+      options: {
+        data: { full_name: nome },
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
     });
 
     if (error) {

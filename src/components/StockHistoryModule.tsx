@@ -4,6 +4,7 @@ import { stockService } from '../services/stockService';
 import { formatCurrency } from '../utils/formatCurrency';
 import ErrorBoundary from './ErrorBoundary';
 import type { Product } from '../types/supabase';
+import BrandNotice, { type BrandNoticeState } from './BrandNotice';
 
 export interface StockHistoryModuleProps {
   produtos: Product[];
@@ -24,6 +25,7 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ change_type: 'Entrada', quantity: '', reason: '' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [notice, setNotice] = useState<BrandNoticeState | null>(null);
 
   const { data: logs = [], isLoading: loadingLogs } = useQuery({
     queryKey: ['stock-logs', selectedProduct?.id],
@@ -40,16 +42,27 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
       queryClient.invalidateQueries({ queryKey: ['stock-logs', selectedProduct?.id] });
       setIsAdjustModalOpen(false);
       setAdjustForm({ change_type: 'Entrada', quantity: '', reason: '' });
-      alert("Estoque calibrado com sucesso via Motor Pro v3!");
+      setNotice({
+        type: 'success',
+        title: 'Estoque atualizado',
+        message: 'A movimentação foi registrada e o novo saldo já está sincronizado.',
+      });
     },
-    onError: (err: Error) => alert(`Erro Crítico no ERP: ${err.message}`)
+    onError: (err: Error) => setNotice({
+      type: 'error',
+      title: 'Não foi possível ajustar o estoque',
+      message: err.message,
+    })
   });
 
   const handleAdjustStock = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
-    const qty = parseInt(adjustForm.quantity);
-    if (isNaN(qty) || qty <= 0) return alert("Quantidade inválida.");
+    const qty = Number(adjustForm.quantity);
+    if (!Number.isSafeInteger(qty) || qty <= 0) {
+      setNotice({ type: 'error', title: 'Quantidade inválida', message: 'Informe um número inteiro maior que zero.' });
+      return;
+    }
 
     const rpcType: 'ENTRADA' | 'SAIDA' = adjustForm.change_type === 'Entrada' ? 'ENTRADA' : 'SAIDA';
     adjustMutation.mutate({
@@ -71,6 +84,7 @@ export default function StockHistoryModule({ produtos }: StockHistoryModuleProps
   return (
     <ErrorBoundary>
       <div className="animate-fade-in-down space-y-6">
+        <BrandNotice notice={notice} onClose={() => setNotice(null)} />
         <div className="flex justify-between items-center bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
           <div>
             <h2 className="text-3xl font-serif font-bold text-secundaria mb-1 flex items-center gap-3">PCP & Inventário <span>📦</span></h2>

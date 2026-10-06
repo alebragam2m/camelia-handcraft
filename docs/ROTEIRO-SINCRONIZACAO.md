@@ -1,5 +1,11 @@
 # Roteiro: painel como central de gestão da Camélia
 
+> Histórico desta iniciativa. Para a ordem atual de execução e os critérios de
+> aceite após a revisão de 02/10/2026, consulte [Roadmap de prioridades](./ROADMAP-PRIORIDADES.md).
+> As evidências abaixo retratam a rodada original; não substituem nova verificação
+> do ambiente remoto. Na revisão local de 02/10/2026, testes, lint, build e TypeScript
+> passaram duas vezes.
+
 ## Objetivo e regras
 
 O Supabase é a fonte única dos dados. O painel gerencia a empresa; a loja consulta o catálogo publicado no mesmo banco. Não há cópia manual de preços ou produtos.

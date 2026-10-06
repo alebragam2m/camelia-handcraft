@@ -25,6 +25,6 @@ export function reconcileCart(items, products) {
     const product = catalog.get(String(item.id));
     if (!product) return { ...item, unavailable: true, stock: 0 };
     // Preserve the requested quantity: never silently change the customer's order.
-    return { ...product, quantity: item.quantity, unavailable: product.is_preorder || Number(product.stock) < item.quantity };
+    return { ...product, cartLineId: item.cartLineId, quantity: item.quantity, unavailable: product.is_preorder || Number(product.stock) < item.quantity };
   });
 }

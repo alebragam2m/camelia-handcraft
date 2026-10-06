@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['api/**/*.js'],
+    files: ['api/**/*.js', 'server/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       ecmaVersion: 2020,

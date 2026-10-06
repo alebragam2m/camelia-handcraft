@@ -78,7 +78,7 @@ export const productService = {
   },
 
   // NOVO — corrige o "Sincronizando infinito" no ProductForm
-  async save(data: any, id?: string) {
+  async save(data: any, id?: string, expectedStock?: number | null) {
     const payload = {
       ...data,
       price: Number(data.price) || 0,
@@ -95,13 +95,19 @@ export const productService = {
     };
 
     if (id) {
-      const { data: result, error } = await supabase
+      let query = supabase
         .from('products')
         .update(payload)
-        .eq('id', id)
+        .eq('id', id);
+      // Não deixa uma tela antiga desfazer ajustes feitos no PCP ou por outra sessão.
+      if (expectedStock != null) query = query.eq('stock', expectedStock);
+      const { data: result, error } = await query
         .select()
         .single();
 
+      if (error?.code === 'PGRST116') {
+        throw new Error('O estoque mudou em outra tela. Reabra o produto e aplique sua alteração novamente.');
+      }
       if (error) throw error;
       return result;
     } else {

@@ -3,15 +3,23 @@ import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useQuery } from '@tanstack/react-query';
+import { BRAZIL_STATES as UFS, shippingCentsForState } from '../lib/shipping';
 
-const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
 export default function Checkout() {
-  const { cartItems, totalPrice, clearCart, catalogReady } = useCart();
+  const { cartItems, totalPrice, rememberCheckout, catalogReady, checkoutAttempt, beginCheckout, finishAttempt } = useCart();
   const [loading, setLoading] = useState(false);
-  const [stockErrors, setStockErrors] = useState([]);
   const [user, setUser] = useState(null);
-  const [shippingRates, setShippingRates] = useState([]);
+  const { data: shippingRates, isPending: shippingLoading, error: shippingError, refetch: retryShipping } = useQuery({
+    queryKey: ['shipping-rates', 'checkout'],
+    queryFn: async ({ signal }) => {
+      const { data, error } = await supabase.from('shipping_rates').select('state,cost').abortSignal(signal);
+      if (error) throw new Error('Não foi possível consultar o frete.');
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
 
 
   const [formData, setFormData] = useState({
@@ -26,20 +34,13 @@ export default function Checkout() {
     estado: 'PA'
   });
 
-  useEffect(() => {
-    checkUser();
-    // Tabela pública de frete por estado — só estimativa de UX; o servidor
-    // recalcula de forma autoritativa em create-checkout-session.js.
-    supabase.from('shipping_rates').select('state, cost').then(({ data }) => {
-      if (data) setShippingRates(data);
-    });
-  }, []);
-
-  const shippingEstimate = (() => {
-    const byState = new Map(shippingRates.map(r => [r.state, Number(r.cost)]));
-    const uf = (formData.estado || '').toUpperCase();
-    return byState.get(uf) ?? byState.get('*') ?? 0;
-  })();
+  useEffect(() => { checkUser(); }, []);
+  let shippingEstimate = null;
+  let shippingMessage = shippingLoading ? 'Consultando frete...' : shippingError ? shippingError.message : '';
+  if (shippingRates && !shippingError) {
+    try { shippingEstimate = shippingCentsForState(shippingRates, formData.estado) / 100; }
+    catch (error) { shippingMessage = error.message; }
+  }
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -48,16 +49,19 @@ export default function Checkout() {
       // Buscar dados do cliente se já existir
       const { data: client } = await supabase
         .from('clients')
-        .select('*')
+        .select('full_name,email,phone,cep,address,address_number,neighborhood,city,state')
         .eq('email', user.email)
         .single();
       
+      setFormData(prev => ({ ...prev, email: user.email || prev.email }));
       if (client) {
         setFormData(prev => ({
           ...prev,
           nome: client.full_name || '',
           email: client.email || '',
           telefone: client.phone || '',
+          cep: client.cep || '', endereco: client.address || '', numero: client.address_number || '',
+          bairro: client.neighborhood || '', cidade: client.city || '', estado: client.state || 'PA',
         }));
       }
     }
@@ -69,65 +73,37 @@ export default function Checkout() {
 
   const handleFinishOrder = async (e) => {
     e.preventDefault();
-    if (cartItems.length === 0) return;
-    if (!catalogReady || cartItems.some(item => item.unavailable)) {
+    if (cartItems.length === 0 && !checkoutAttempt) return;
+    if (!checkoutAttempt && (!catalogReady || cartItems.some(item => item.unavailable))) {
       alert('Aguarde a atualização do catálogo e ajuste os itens indisponíveis no carrinho.');
       return;
     }
 
-    setStockErrors([]);
+    if (!checkoutAttempt && shippingEstimate === null) { alert(shippingMessage || 'Aguarde o cálculo de frete.'); return; }
+
     setLoading(true);
 
     try {
-      // 0. Checagem rápida de estoque no cliente — só UX, não autoritativa.
-      // A validação real acontece no servidor via priceCatalogOrder.
-      const productIds = cartItems.map(item => item.id);
-      const { data: currentStock, error: stockErr } = await supabase
-        .from('storefront_products')
-        .select('id, nome, stock')
-        .in('id', productIds);
-
-      if (stockErr) throw new Error('Não foi possível verificar o estoque. Tente novamente.');
-
-      const insuficientes = cartItems.filter(item => {
-        const produto = currentStock.find(p => String(p.id) === String(item.id));
-        return !produto || produto.stock < item.quantity;
-      }).map(item => {
-        const produto = currentStock.find(p => String(p.id) === String(item.id));
-        const disponivel = produto ? produto.stock : 0;
-        return { nome: item.nome, solicitado: item.quantity, disponivel };
-      });
-
-      if (insuficientes.length > 0) {
-        setStockErrors(insuficientes);
-        setLoading(false);
-        return;
-      }
-
-      // 1. Servidor cria cliente + pedido + itens (preço/estoque recalculados
-      // lá) e a sessão do Stripe em uma única chamada.
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      if (authError) throw new Error('Não foi possível verificar sua sessão. Entre novamente.');
+      const attempt = await beginCheckout(formData, cartItems, authData.session?.user.id ?? null);
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(authData.session ? { Authorization: 'Bearer ' + authData.session.access_token } : {}) },
         body: JSON.stringify({
-          cartItems: cartItems.map(item => ({ id: item.id, quantity: item.quantity, price: item.price })),
-          customer: formData,
+          requestId: attempt.requestId,
+          cartItems: attempt.items.map(({ id, quantity, price }) => ({ id, quantity, price })),
+          customer: attempt.customer,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Erro no Servidor (${response.status}): ${errorData || "Sem detalhes da falha."}`);
-      }
-
-      const { url } = await response.json();
-      
-      if (url) {
-        clearCart(); // Limpa carrinho antes de ir pro Stripe
-        window.location.href = url; // Redireciona para o checkout do Stripe
-      } else {
-        throw new Error("A API não retornou uma URL de pagamento válida.");
-      }
+      const result = await response.json();
+      if (result.terminal) await finishAttempt(attempt.requestId);
+      if (!response.ok) throw new Error(result.error || 'Não foi possível preparar o pagamento.');
+      if (!result.url || !result.sessionId) throw new Error('A sessão de pagamento não foi criada.');
+      // Salva o snapshot, mas mantém os itens até a confirmação do pagamento.
+      await rememberCheckout(result.sessionId, attempt.items, attempt.requestId);
+      window.location.href = result.url;
 
     } catch (err) {
       console.error("Erro ao finalizar pedido:", err);
@@ -136,6 +112,31 @@ export default function Checkout() {
       setLoading(false);
     }
   };
+
+  const cancelAttempt = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      const response = await fetch('/api/cancel-checkout', { method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(data.session ? { Authorization: 'Bearer ' + data.session.access_token } : {}) },
+        body: JSON.stringify({ requestId: checkoutAttempt.requestId }) });
+      const result = await response.json();
+      if (!response.ok || result.state !== 'expired') throw new Error(result.error || 'Cancelamento não confirmado.');
+      await finishAttempt(checkoutAttempt.requestId);
+    } catch (error) { alert(error.message || 'Não foi possível cancelar. Tente novamente.'); }
+    finally { setLoading(false); }
+  };
+
+  if (checkoutAttempt) return (
+    <div className="min-h-screen bg-fundo px-4 py-24"><div className="max-w-xl mx-auto bg-white p-8 rounded-2xl">
+      <h1 className="font-serif text-2xl mb-4">Você tem uma tentativa em andamento</h1>
+      <p className="mb-6">Retome o pagamento com os dados e itens enviados anteriormente. Para alterar o pedido, cancele esta tentativa primeiro. Os itens do carrinho serão preservados.</p>
+      <button disabled={loading} onClick={handleFinishOrder} className="bg-primaria text-white rounded-xl p-4 w-full mb-4">{loading ? 'Consultando...' : 'Retomar pagamento'}</button>
+      <button disabled={loading} onClick={cancelAttempt} className="border rounded-xl p-4 w-full">Cancelar tentativa e liberar reserva</button>
+      <Link to="/contato" className="block mt-6 underline">Preciso de ajuda com esta tentativa</Link>
+    </div></div>
+  );
 
   if (cartItems.length === 0) {
     return (
@@ -182,7 +183,7 @@ export default function Checkout() {
             
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">E-mail</label>
-              <input required type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
+              <input required readOnly={!!user} type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
             </div>
             
             <div className="space-y-2">
@@ -213,20 +214,7 @@ export default function Checkout() {
             </div>
 
             <div className="md:col-span-2 pt-10">
-              {stockErrors.length > 0 && (
-                <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-5">
-                  <p className="text-red-700 font-bold text-xs uppercase tracking-widest mb-3">Estoque insuficiente para finalizar o pedido:</p>
-                  <ul className="space-y-1">
-                    {stockErrors.map((item, i) => (
-                      <li key={i} className="text-red-600 text-sm font-medium">
-                        <strong>{item.nome}</strong> — você pediu {item.solicitado} {item.solicitado === 1 ? 'unidade' : 'unidades'}, {item.disponivel === 0 ? 'mas está esgotado' : `mas só há ${item.disponivel} disponível`}.
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mt-3">Ajuste as quantidades no carrinho e tente novamente.</p>
-                </div>
-              )}
-              <button disabled={loading || !catalogReady || cartItems.some(item => item.unavailable)} className="w-full bg-secundaria text-white font-bold py-6 rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-[4px] text-sm active:scale-[0.98] disabled:bg-gray-400 flex items-center justify-center gap-3">
+              <button disabled={loading || shippingEstimate === null || !catalogReady || cartItems.some(item => item.unavailable)} className="w-full bg-secundaria text-white font-bold py-6 rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-[4px] text-sm active:scale-[0.98] disabled:bg-gray-400 flex items-center justify-center gap-3">
                 {loading ? "Preparando Pagamento..." : (
                   <>
                     Ir para o Pagamento
@@ -235,7 +223,7 @@ export default function Checkout() {
                 )}
               </button>
               <p className="text-[10px] text-gray-400 text-center mt-6 uppercase font-bold tracking-widest">
-                Ambiente de pagamento seguro via Stripe & PIX.
+                Pagamento com cartão processado pela Stripe.
               </p>
             </div>
           </form>
@@ -263,15 +251,16 @@ export default function Checkout() {
               </div>
               <div className="flex justify-between items-center text-gray-400 uppercase tracking-widest text-[10px] font-bold">
                 <span>Entrega ({formData.estado})</span>
-                {shippingEstimate > 0
+                {shippingEstimate === null ? <span>A confirmar</span> : shippingEstimate > 0
                   ? <span className="text-secundaria font-bold">{formatCurrency(shippingEstimate)}</span>
                   : <span className="text-green-500 font-bold uppercase">Grátis</span>}
               </div>
               <div className="flex justify-between items-center pt-4">
                 <span className="font-serif text-3xl font-bold text-primaria">Total</span>
-                <span className="font-serif text-3xl font-bold text-primaria">{formatCurrency(totalPrice + shippingEstimate)}</span>
+                <span className="font-serif text-3xl font-bold text-primaria">{shippingEstimate === null ? 'A confirmar' : formatCurrency(totalPrice + shippingEstimate)}</span>
               </div>
-              <p className="text-[9px] text-gray-300 text-center">Frete estimado — o valor final é confirmado no pagamento.</p>
+              {shippingMessage && <p role="alert" className="text-sm text-amber-800">{shippingMessage} <button type="button" onClick={() => retryShipping()} className="underline">Consultar novamente</button></p>}
+              <p className="text-xs text-gray-500 text-center">Frete estimado — o valor final é confirmado no pagamento.</p>
             </div>
           </div>
         </div>
