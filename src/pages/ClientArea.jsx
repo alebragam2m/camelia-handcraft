@@ -84,8 +84,8 @@ function ClientArea() {
   }, [data, navigate]);
 
   const handleLogout = async () => {
+    navigate('/', { replace: true });
     await supabase.auth.signOut();
-    navigate('/');
   };
 
   const handleUpdateProfile = async (e) => {
