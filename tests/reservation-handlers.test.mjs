@@ -57,6 +57,14 @@ test('invalid attempt, invalid customer, and more than 99 products stop before w
  const f=fixture(),res=f.response();Object.assign(f.req.body,change);await createCheckoutHandler(f.deps)(f.req,res);assert.equal(res.code,400);assert.equal(f.calls.length,0);
  }
 });
+test('pickup requires contact details but does not require a delivery address',async()=>{
+ const f=fixture(),res=f.response();
+ f.req.body.customer={nome:'Teste',email:'cliente@example.test',telefone:'123',delivery_method:'pickup'};
+ await createCheckoutHandler(f.deps)(f.req,res);
+ assert.equal(res.code,200);
+ assert.equal(f.calls[0].args.p_customer.delivery_method,'pickup');
+ assert.equal(f.calls[0].args.p_customer.endereco,'');
+});
 test('database rejects stock/price/freight and provider errors remain private',async()=>{
  for(const message of ['Estoque insuficiente.','O preço mudou.','Frete indisponível.']){
  const f=fixture({reserveError:{code:'P0001',message}}),res=f.response();await createCheckoutHandler(f.deps)(f.req,res);

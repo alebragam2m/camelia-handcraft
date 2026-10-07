@@ -16,6 +16,7 @@
     "test:catalog": "node scripts/test-catalog-browser.mjs",
     "test:staging:catalog": "node --env-file=.env.staging.local scripts/test-staging-catalog.mjs",
     "test:staging:pix": "node --env-file=.env.staging.local scripts/test-staging-pix.mjs",
+    "test:staging:pickup": "node --env-file=.env.staging.local scripts/test-staging-pickup.mjs",
     "preflight:staging": "node --env-file=.env.staging.local scripts/preflight-environment.mjs --target staging",
     "preflight:production": "node --env-file=.env.production.local scripts/preflight-environment.mjs --target production"
   },

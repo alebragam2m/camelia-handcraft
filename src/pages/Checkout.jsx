@@ -23,6 +23,7 @@ export default function Checkout() {
 
 
   const [formData, setFormData] = useState({
+    delivery_method: 'delivery',
     nome: '',
     email: '',
     telefone: '',
@@ -35,9 +36,10 @@ export default function Checkout() {
   });
 
   useEffect(() => { checkUser(); }, []);
-  let shippingEstimate = null;
-  let shippingMessage = shippingLoading ? 'Consultando frete...' : shippingError ? shippingError.message : '';
-  if (shippingRates && !shippingError) {
+  const isPickup = formData.delivery_method === 'pickup';
+  let shippingEstimate = isPickup ? 0 : null;
+  let shippingMessage = isPickup ? '' : shippingLoading ? 'Consultando frete...' : shippingError ? shippingError.message : '';
+  if (!isPickup && shippingRates && !shippingError) {
     try { shippingEstimate = shippingCentsForState(shippingRates, formData.estado) / 100; }
     catch (error) { shippingMessage = error.message; }
   }
@@ -167,7 +169,7 @@ export default function Checkout() {
           </div>
 
           {(!catalogReady || cartItems.some(item => item.unavailable)) && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">A compra está aguardando preços e disponibilidade atualizados. Confira os itens no carrinho.</p>}
-          <h2 className="font-serif text-3xl font-bold text-secundaria mb-4 border-b border-gray-100 pb-6">Detalhes de Entrega</h2>
+          <h2 className="font-serif text-3xl font-bold text-secundaria mb-4 border-b border-gray-100 pb-6">Como deseja receber?</h2>
           {!user && (
             <div className="bg-primaria/5 p-4 rounded-2xl mb-8 flex justify-between items-center border border-primaria/10">
               <span className="text-[11px] text-primaria font-bold uppercase tracking-widest">Já é cliente?</span>
@@ -176,6 +178,19 @@ export default function Checkout() {
           )}
 
           <form onSubmit={handleFinishOrder} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label className={`cursor-pointer rounded-2xl border-2 p-5 transition-all ${!isPickup ? 'border-primaria bg-primaria/5 shadow-md' : 'border-gray-100 bg-white'}`}>
+                <input type="radio" name="delivery_method" value="delivery" checked={!isPickup} onChange={handleInputChange} className="sr-only" />
+                <span className="block font-bold text-secundaria">Receber no endereço</span>
+                <span className="mt-1 block text-sm text-gray-500">Entrega calculada para seu estado</span>
+              </label>
+              <label className={`cursor-pointer rounded-2xl border-2 p-5 transition-all ${isPickup ? 'border-primaria bg-primaria/5 shadow-md' : 'border-gray-100 bg-white'}`}>
+                <input type="radio" name="delivery_method" value="pickup" checked={isPickup} onChange={handleInputChange} className="sr-only" />
+                <span className="block font-bold text-secundaria">Retirar no ateliê</span>
+                <span className="mt-1 block text-sm font-bold text-emerald-600">Grátis · combinaremos pelo WhatsApp</span>
+              </label>
+            </div>
+
             <div className="md:col-span-2 space-y-2">
               <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Nome Completo</label>
               <input required name="nome" value={formData.nome} onChange={handleInputChange} className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
@@ -191,6 +206,7 @@ export default function Checkout() {
               <input required name="telefone" value={formData.telefone} onChange={handleInputChange} placeholder="(00) 00000-0000" className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
             </div>
 
+            {!isPickup && <>
             <div className="md:col-span-1 space-y-2">
               <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">CEP (Opcional)</label>
               <input name="cep" value={formData.cep} onChange={handleInputChange} className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
@@ -212,6 +228,11 @@ export default function Checkout() {
               <label className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Endereço de Entrega</label>
               <input required name="endereco" value={formData.endereco} onChange={handleInputChange} placeholder="Rua, Número, Complemento..." className="w-full bg-white border border-gray-100 p-4 rounded-xl shadow-sm focus:border-primaria transition-colors outline-none text-secundaria" />
             </div>
+            </>}
+
+            {isPickup && <div className="md:col-span-2 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-sm text-emerald-900">
+              Após o pagamento, a Camélia entrará em contato pelo WhatsApp para combinar o dia e o local da retirada.
+            </div>}
 
             <div className="md:col-span-2 pt-10">
               <button disabled={loading || shippingEstimate === null || !catalogReady || cartItems.some(item => item.unavailable)} className="w-full bg-secundaria text-white font-bold py-6 rounded-2xl shadow-xl hover:bg-black transition-all uppercase tracking-[4px] text-sm active:scale-[0.98] disabled:bg-gray-400 flex items-center justify-center gap-3">
@@ -223,7 +244,7 @@ export default function Checkout() {
                 )}
               </button>
               <p className="text-[10px] text-gray-400 text-center mt-6 uppercase font-bold tracking-widest">
-                Pagamento com cartão processado pela Stripe.
+                Pagamento com cartão ou Pix processado pela Stripe.
               </p>
             </div>
           </form>
@@ -250,7 +271,7 @@ export default function Checkout() {
                 <span>{cartItems.length}</span>
               </div>
               <div className="flex justify-between items-center text-gray-400 uppercase tracking-widest text-[10px] font-bold">
-                <span>Entrega ({formData.estado})</span>
+                <span>{isPickup ? 'Retirada no ateliê' : `Entrega (${formData.estado})`}</span>
                 {shippingEstimate === null ? <span>A confirmar</span> : shippingEstimate > 0
                   ? <span className="text-secundaria font-bold">{formatCurrency(shippingEstimate)}</span>
                   : <span className="text-green-500 font-bold uppercase">Grátis</span>}
@@ -260,7 +281,7 @@ export default function Checkout() {
                 <span className="font-serif text-3xl font-bold text-primaria">{shippingEstimate === null ? 'A confirmar' : formatCurrency(totalPrice + shippingEstimate)}</span>
               </div>
               {shippingMessage && <p role="alert" className="text-sm text-amber-800">{shippingMessage} <button type="button" onClick={() => retryShipping()} className="underline">Consultar novamente</button></p>}
-              <p className="text-xs text-gray-500 text-center">Frete estimado — o valor final é confirmado no pagamento.</p>
+              <p className="text-xs text-gray-500 text-center">{isPickup ? 'Sem cobrança de frete.' : 'Frete estimado — o valor final é confirmado no pagamento.'}</p>
             </div>
           </div>
         </div>

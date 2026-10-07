@@ -36,15 +36,20 @@ BEGIN
    RETURN jsonb_build_object('sale_id',r.sale_id,'state',r.state,'session_id',r.session_id,'payload',r.stripe_payload,'created_at',r.created_at);
  END IF;
  IF p_origin IS NULL OR p_origin !~ '^https://[^/]+$|^http://(localhost|127[.]0[.]0[.]1)(:[0-9]+)?$' THEN RAISE EXCEPTION 'Origem inválida.'; END IF;
- IF p_customer->>'estado' IS NULL OR p_customer->>'estado' NOT IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO') THEN RAISE EXCEPTION 'Estado inválido.'; END IF;
+ IF COALESCE(p_customer->>'delivery_method','delivery') NOT IN ('delivery','pickup') THEN RAISE EXCEPTION 'Forma de entrega inválida.'; END IF;
+ IF COALESCE(p_customer->>'delivery_method','delivery') = 'delivery' AND (p_customer->>'estado' IS NULL OR p_customer->>'estado' NOT IN ('AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO')) THEN RAISE EXCEPTION 'Estado inválido.'; END IF;
  IF COALESCE(p_customer->>'nome','') = '' OR COALESCE(p_customer->>'email','') = '' THEN RAISE EXCEPTION 'Contato inválido.'; END IF;
  IF p_actor_id IS NOT NULL THEN
    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id=p_actor_id AND email_confirmed_at IS NOT NULL AND lower(email)=p_customer->>'email') THEN RAISE EXCEPTION 'Identidade inválida.'; END IF;
    INSERT INTO public.clients(full_name,email,phone) VALUES(p_customer->>'nome',p_customer->>'email',p_customer->>'telefone') ON CONFLICT(email) DO NOTHING;
    SELECT id INTO v_client FROM public.clients WHERE email=p_customer->>'email';
  END IF;
- SELECT cost INTO v_shipping FROM public.shipping_rates
- WHERE state IN (p_customer->>'estado','*') ORDER BY (state=p_customer->>'estado') DESC LIMIT 1 FOR SHARE;
+ IF COALESCE(p_customer->>'delivery_method','delivery') = 'pickup' THEN
+   v_shipping := 0;
+ ELSE
+   SELECT cost INTO v_shipping FROM public.shipping_rates
+   WHERE state IN (p_customer->>'estado','*') ORDER BY (state=p_customer->>'estado') DESC LIMIT 1 FOR SHARE;
+ END IF;
  IF v_shipping IS NULL OR v_shipping < 0 OR v_shipping::text IN ('NaN','Infinity','-Infinity') THEN RAISE EXCEPTION 'Frete indisponível.'; END IF;
  v_shipping := round(v_shipping*100);
  IF (SELECT count(DISTINCT value->>'id') FROM jsonb_array_elements(v_items)) <> jsonb_array_length(v_items) THEN RAISE EXCEPTION 'Produtos duplicados.'; END IF;

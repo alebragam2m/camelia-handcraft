@@ -6,7 +6,11 @@ class CheckoutError extends Error {
 
 function validateCustomer(input) {
   const limits = { nome: 200, email: 254, telefone: 40, endereco: 500, cidade: 100, estado: 2, cep: 20, numero: 40, bairro: 100 };
-  const required = ['nome', 'email', 'telefone', 'endereco', 'cidade', 'estado'];
+  const deliveryMethod = input?.delivery_method ?? 'delivery';
+  if (!['delivery', 'pickup'].includes(deliveryMethod)) throw new CheckoutError(400, 'Forma de entrega inválida.');
+  const required = deliveryMethod === 'delivery'
+    ? ['nome', 'email', 'telefone', 'endereco', 'cidade', 'estado']
+    : ['nome', 'email', 'telefone'];
   const customer = {};
   for (const [key, max] of Object.entries(limits)) {
     const value = input?.[key] ?? '';
@@ -16,6 +20,7 @@ function validateCustomer(input) {
   if (required.some(key => !customer[key]) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) throw new CheckoutError(400, 'Confira os dados de contato e entrega.');
   customer.email = customer.email.toLowerCase();
   customer.estado = customer.estado.toUpperCase();
+  customer.delivery_method = deliveryMethod;
   return customer;
 }
 
