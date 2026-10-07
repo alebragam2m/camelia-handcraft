@@ -20,6 +20,7 @@ import UsersModule from '../components/UsersModule';
 import SalesModule from '../components/SalesModule';
 import ClientsModule from '../components/ClientsModule';
 import ErrorBoundary from '../components/ErrorBoundary';
+import HelpModule from '../components/HelpModule';
 
 /**
  * DASHBOARD ADMINISTRATIVO - CAMÉLIA HANDCRAFT (MOT PRO v3)
@@ -140,6 +141,7 @@ export default function AdminDashboard() {
                   { id: 'frete', label: 'Frete', icon: '🚚', levelRequired: 2 },
                   { id: 'financeiro', label: 'Financeiro (DRE)', icon: '🏦', levelRequired: 3 },
                   { id: 'usuarios', label: 'Acessos/RBAC', icon: '👥', levelRequired: 4 },
+                  { id: 'ajuda', label: 'Ajuda / Manual', icon: '❔' },
                 ].map(item => (
                   (!item.levelRequired || userLevel >= item.levelRequired) && (
                     <button key={item.id} onClick={() => { setActiveTab(item.id); setIsSidebarOpen(false); }} className={`w-full text-left px-4 py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all flex items-center gap-3 ${activeTab === item.id ? 'bg-[#5B4BBF] text-white shadow-lg' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
@@ -166,6 +168,7 @@ export default function AdminDashboard() {
                  {activeTab === 'frete' && 'Frete por Estado'}
                  {activeTab === 'financeiro' && 'Tesouraria'}
                  {activeTab === 'usuarios' && 'Gestão de Perfis'}
+                 {activeTab === 'ajuda' && 'Ajuda e Manual de Operação'}
               </h2>
               {isErrorSales && (
                 <div className="bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 flex items-center gap-3 animate-pulse">
@@ -211,6 +214,7 @@ export default function AdminDashboard() {
               
               {activeTab === 'vendas' && <SalesModule isAdmin={canAccessFullAdmin} />}
               {activeTab === 'clientes' && <ClientsModule />}
+              {activeTab === 'ajuda' && <HelpModule />}
             </div>
           </main>
         </div>
