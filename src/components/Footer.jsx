@@ -77,7 +77,7 @@ function Footer() {
         </div>
         
         <div className="border-t border-gray-600/50 pt-8 flex flex-col md:flex-row justify-between items-center opacity-70 gap-4">
-          <p className="text-xs text-gray-100 tracking-wide text-center md:text-left">© 2026 Camélia Handcraft. Todos os direitos reservados. Comprometidos com a LGPD e privacidade dos seus dados.</p>
+          <p className="text-xs text-gray-100 tracking-wide text-center md:text-left">© 2026 Camélia Handcraft. Todos os direitos reservados. | Desenvolvido por Polaris Lake.</p>
           <p className="text-xs text-gray-100 tracking-wide">Pagamento por Pix ou cartão, processado pela Stripe.</p>
         </div>
       </div>
