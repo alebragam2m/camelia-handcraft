@@ -64,6 +64,7 @@ try {
     await admin.locator('[name="price"]').fill('29.90');
     await admin.locator('[name="cost"]').fill('9.50');
     await admin.locator('[name="stock"]').fill('3');
+    await admin.locator('[name="description"]').fill('Descrição E2E: primeira linha.\nSegunda linha.');
     await admin.getByRole('button', { name: 'Flores', exact: true }).click();
     await admin.getByRole('button', { name: 'Cadastrar na Camélia', exact: true }).click();
     await expect(admin.getByRole('heading', { name: productName, exact: true })).toBeVisible();
@@ -72,6 +73,14 @@ try {
     productId = data.id;
     assert.equal(data.stock, 3);
     assert.equal(data.show_on_site, true);
+  });
+
+  await report('descrição do painel publicada na vitrine', async () => {
+    const { data, error } = await service.from('products').select('description').eq('id', productId).single();
+    if (error) throw error;
+    assert.equal(data.description, 'Descrição E2E: primeira linha.\nSegunda linha.');
+    await site.goto(`http://127.0.0.1:5191/produtos/${productId}`);
+    await expect(site.getByText(/Descrição E2E: primeira linha\.\s+Segunda linha\./)).toBeVisible();
   });
 
   await report('upload e persistência de foto no Storage', async () => {
@@ -93,7 +102,7 @@ try {
     await expect(site.getByText('R$ 29,90', { exact: true })).toBeVisible();
     const image = site.getByRole('img', { name: productName }).first();
     await expect.poll(() => image.evaluate(node => node.naturalWidth)).toBeGreaterThan(0);
-    await expect(site.getByRole('button', { name: 'Adicionar ao Carrinho', exact: true })).toBeVisible();
+    await expect(site.getByRole('button', { name: /^Adicionar ao carrinho/ })).toBeVisible();
   });
 
   await report('ajuste atômico de estoque refletido na vitrine', async () => {
@@ -106,7 +115,7 @@ try {
     if (error) throw error;
     assert.equal(data.success, true);
     await site.reload();
-    await expect(site.getByRole('button', { name: 'Adicionar ao Carrinho', exact: true })).toHaveCount(0);
+    await expect(site.getByRole('button', { name: /^Adicionar ao carrinho/ })).toHaveCount(0);
   });
 } finally {
   if (browser) await browser.close();
@@ -123,4 +132,4 @@ try {
   }
 }
 
-console.log(`${results.length}/5 cenários remotos aprovados e dados temporários removidos.`);
+console.log(`${results.length}/6 cenários remotos aprovados e dados temporários removidos.`);

@@ -299,12 +299,15 @@ export default function ProductForm({ product, onClose, initialCategory }: Produ
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1 font-sans">Descrição Comercial</label>
-              <textarea 
-                {...register('description')} 
-                rows={3}
-                placeholder="Descreva a beleza e os detalhes desta peça..."
-                className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria text-sm outline-none focus:border-primaria focus:bg-white transition-all resize-none font-sans" 
+              <label htmlFor="product-description" className="block text-sm font-semibold text-secundaria mb-1 px-1 font-sans">Descrição no site</label>
+              <p id="product-description-hint" className="text-xs text-gray-600 mb-2 px-1">Aparece na página da peça, abaixo do preço. Sem descrição, a página mostra só nome, preço e fotos. Quebras de linha são mantidas.</p>
+              <textarea
+                id="product-description"
+                aria-describedby="product-description-hint"
+                {...register('description')}
+                rows={5}
+                placeholder="Ex.: Porta-guardanapo em forma de astromélia, pétalas de tecido pintadas à mão. Combina com guardanapos claros."
+                className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-secundaria text-sm outline-none focus:border-primaria focus:bg-white transition-all resize-y font-sans"
               />
             </div>
 

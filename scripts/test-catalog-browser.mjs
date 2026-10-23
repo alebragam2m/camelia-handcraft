@@ -48,7 +48,7 @@ try{
  await report('Vitrine pública exibe novo produto sem custos/notas internas',async()=>{
   await expect(site.getByRole('heading',{name:'Peça Integração'})).toBeVisible();
   const [row]=await records('storefront_products');assert.equal(row.cost,undefined);assert.equal(row.technical_notes,undefined);
-  await expect(site.getByRole('button',{name:'Adicionar ao Carrinho',exact:true})).toBeVisible();
+  await expect(site.getByRole('button',{name:/^Adicionar ao carrinho/})).toBeVisible();
  });
  const photo=await admin.evaluate(()=>{const c=document.createElement('canvas');c.width=160;c.height=200;const x=c.getContext('2d');x.fillStyle='#da758e';x.fillRect(0,0,160,200);return c.toDataURL('image/png').split(',')[1];});
  const file={name:'teste.png',mimeType:'image/png',buffer:Buffer.from(photo,'base64')};
@@ -97,7 +97,7 @@ try{
   await admin.getByRole('button',{name:'Salvar Calibração',exact:true}).click();
   await expect(admin.getByRole('button',{name:'Ajuste Manual',exact:true})).toBeVisible();
   assert.equal((await records())[0].stock,0);assert.equal((await records('inventory_logs')).length,1);
-  await refreshSite();await expect(site.getByRole('button',{name:'Adicionar ao Carrinho',exact:true})).toHaveCount(0);
+  await refreshSite();await expect(site.getByRole('button',{name:/^Adicionar ao carrinho/})).toHaveCount(0);
   await admin.getByRole('button',{name:'Fechar [X]',exact:true}).click();
  });
  await admin.getByRole('button',{name:'📦 Produtos',exact:true}).click();await admin.getByText('Ver Tudo',{exact:true}).click();

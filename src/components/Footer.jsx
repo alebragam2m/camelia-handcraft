@@ -26,7 +26,7 @@ function Footer() {
               <li><Link to="/legal?tab=termos" className="text-gray-300 hover:text-branco hover:translate-x-1 inline-block transition-all">Termos de Uso</Link></li>
               <li><Link to="/legal?tab=privacidade" className="text-gray-300 hover:text-branco hover:translate-x-1 inline-block transition-all">Política LGPD</Link></li>
               <li><Link to="/legal?tab=trocas" className="text-gray-300 hover:text-branco hover:translate-x-1 inline-block transition-all">Trocas e Devoluções</Link></li>
-              <li><Link to="/legal" className="text-secundaria bg-branco px-3 py-1 rounded-lg hover:bg-secundaria hover:text-branco border border-branco inline-block mt-2 transition-all font-bold text-xs uppercase tracking-widest">Portal de Transparência</Link></li>
+              <li><Link to="/legal" className="text-secundaria bg-branco px-3 py-1 rounded-lg hover:bg-secundaria hover:text-branco border border-branco inline-block mt-2 transition-all font-bold text-xs uppercase tracking-widest">Todas as políticas</Link></li>
             </ul>
           </div>
 
@@ -35,19 +35,19 @@ function Footer() {
             <ul className="space-y-4 text-sm tracking-wide text-gray-300">
               <li>
                 <a href="https://wa.me/5591991145232?text=Olá,%20Camélia!" target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                  <img src="https://api.iconify.design/logos:whatsapp-icon.svg" className="w-5 h-5" alt="WhatsApp" />
+                  <img src="/whatsapp.svg" className="w-5 h-5" alt="" />
                   WhatsApp: (91) 99114-5232
                 </a>
               </li>
               <li>
                 <a href="mailto:ola@cameliahandcraft.com.br" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                  <img src="https://api.iconify.design/logos:google-gmail.svg" className="w-5 h-5" alt="E-mail" />
+                  <img src="/gmail.svg" className="w-5 h-5" alt="" />
                   ola@cameliahandcraft.com.br
                 </a>
               </li>
               <li>
                 <a href="https://instagram.com/camelia.handcraft" target="_blank" rel="noreferrer" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                  <img src="https://api.iconify.design/skill-icons:instagram.svg" className="w-5 h-5" alt="Instagram" />
+                  <img src="/instagram.svg" className="w-5 h-5" alt="" />
                   @camelia.handcraft
                 </a>
               </li>
@@ -78,11 +78,7 @@ function Footer() {
         
         <div className="border-t border-gray-600/50 pt-8 flex flex-col md:flex-row justify-between items-center opacity-70 gap-4">
           <p className="text-xs text-gray-100 tracking-wide text-center md:text-left">© 2026 Camélia Handcraft. Todos os direitos reservados. Comprometidos com a LGPD e privacidade dos seus dados.</p>
-          <div className="flex space-x-3 items-center bg-white/5 py-2 px-4 rounded-xl border border-white/10">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-[#D8B4E2] mr-2">Pagamento Seguro</span>
-            <img src="https://api.iconify.design/logos:visa.svg" className="h-6 w-auto" alt="Visa" />
-            <img src="https://api.iconify.design/logos:mastercard.svg" className="h-6 w-auto ml-1" alt="Mastercard" />
-          </div>
+          <p className="text-xs text-gray-100 tracking-wide">Pagamento por Pix ou cartão, processado pela Stripe.</p>
         </div>
       </div>
     </footer>

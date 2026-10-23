@@ -1,11 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getCollections, reconcileCart, PUBLIC_PRODUCT_COLUMNS } from '../src/lib/catalog.js';
+import { getCollections, inCollection, reconcileCart, PUBLIC_PRODUCT_COLUMNS } from '../src/lib/catalog.js';
 import { productSchema } from '../src/schemas/productSchema.ts';
 const product = { id: 'a', nome: 'Guardanapo', price: 25, stock: 5, show_on_site: true, is_insumo: false, colecao: 'Natal, Flores', image_url: 'photo.jpg' };
 
 test('collections split multiple names, use product photos and exclude private products', () => {
- assert.deepEqual(getCollections([product, { ...product, id: 'b', colecao: 'Segredo', show_on_site: false }, { ...product, id: 'c', colecao: 'Materiais', is_insumo: true }]), [{ nome: 'Flores', img: 'photo.jpg' }, { nome: 'Natal', img: 'photo.jpg' }]);
+ assert.deepEqual(getCollections([product, { ...product, id: 'b', colecao: 'Segredo', show_on_site: false }, { ...product, id: 'c', colecao: 'Materiais', is_insumo: true }]), [{ nome: 'Flores', img: 'photo.jpg', count: 1 }, { nome: 'Natal', img: 'photo.jpg', count: 1 }]);
+});
+test('collections ignore letter case and prefer a photo not used by another collection', () => {
+ const items = [{ ...product, colecao: 'Frutas e legumes, Frutas e Legumes', image_url: 'a.jpg' }, { ...product, id: 'b', colecao: 'Frutas e Legumes, Diversos', image_url: 'b.jpg' }];
+ assert.deepEqual(getCollections(items), [{ nome: 'Diversos', img: 'b.jpg', count: 1 }, { nome: 'Frutas e legumes', img: 'a.jpg', count: 2 }]);
+ assert.equal(inCollection(items[1], 'frutas e legumes'), true);
 });
 test('panel price and photo changes reach an existing cart without changing its requested quantity', () => {
  const cart = [{ ...product, quantity: 2, cost: 10 }];

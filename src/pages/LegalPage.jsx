@@ -31,10 +31,11 @@ function LegalPage() {
                 <button
                   key={tab.id}
                   onClick={() => setSearchParams({ tab: tab.id })}
-                  className={`text-left px-5 py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                  aria-current={currentTab === tab.id ? 'page' : undefined}
+                  className={`text-left px-5 py-4 rounded-xl text-base font-semibold transition-all ${
                     currentTab === tab.id
                       ? 'bg-secundaria text-white shadow-md'
-                      : 'bg-white text-gray-400 hover:bg-gray-50 hover:text-secundaria border border-gray-100'
+                      : 'bg-white text-secundaria/80 hover:bg-[#ECEAF6] hover:text-secundaria'
                   }`}
                 >
                   {tab.title}
@@ -52,8 +53,8 @@ function LegalPage() {
         </aside>
 
         {/* Content Area */}
-        <main className="md:w-3/4 bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-gray-100">
-          <div className="prose prose-sm sm:prose-base max-w-none text-gray-600 text-justify leading-relaxed">
+        <main className="md:w-3/4 bg-white p-8 md:p-12 rounded-3xl">
+          <div className="prose prose-sm sm:prose-base max-w-none text-secundaria/90 leading-relaxed">
             
             {/* 1. Privacidade */}
             {currentTab === 'privacidade' && (
@@ -136,7 +137,7 @@ function LegalPage() {
                 <div className="flex flex-col md:flex-row gap-6 my-8">
                   <div className="bg-emerald-50 p-6 rounded-2xl flex-1 border border-emerald-100">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-emerald-600 mb-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>
-                    <h4 className="font-bold text-emerald-800 uppercase tracking-widest text-xs mb-2">Checkout Blindado (Pontões)</h4>
+                    <h4 className="font-bold text-emerald-800 uppercase tracking-widest text-xs mb-2">Pagamento protegido</h4>
                     <p className="text-sm text-emerald-700">A página final on-line onde se insere os dados sigilosos possui encriptação TLS completa, garantindo barreira impossível de visualizar entre o cliente e nossa rede.</p>
                   </div>
 

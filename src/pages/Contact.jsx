@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 function Contact() {
   const [form, setForm] = useState({ name: '', email: '', message: '' });
@@ -62,20 +63,24 @@ function Contact() {
               </div>
             ) : (
               <form className="space-y-6" onSubmit={handleSubmit}>
+                <p className="text-sm text-secundaria/80">Usamos seus dados só para responder esta mensagem. Veja a <Link to="/legal?tab=privacidade" className="underline underline-offset-4">política de privacidade</Link>.</p>
                 <div>
-                  <input type="text" name="name" value={form.name} onChange={handleChange} placeholder="Seu Nome Completo" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
+                  <label htmlFor="contato-nome" className="block mb-2 text-sm font-semibold text-secundaria">Nome</label>
+                  <input id="contato-nome" autoComplete="name" type="text" name="name" value={form.name} onChange={handleChange} placeholder="Como devemos te chamar" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
                 </div>
                 <div>
-                  <input type="email" name="email" value={form.email} onChange={handleChange} placeholder="Seu E-mail" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
+                  <label htmlFor="contato-email" className="block mb-2 text-sm font-semibold text-secundaria">E-mail</label>
+                  <input id="contato-email" autoComplete="email" type="email" name="email" value={form.email} onChange={handleChange} placeholder="voce@email.com" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700" required />
                 </div>
                 <div>
-                  <textarea rows="4" name="message" value={form.message} onChange={handleChange} placeholder="Sua Mensagem Detalhada" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700 resize-none" required></textarea>
+                  <label htmlFor="contato-mensagem" className="block mb-2 text-sm font-semibold text-secundaria">Mensagem</label>
+                  <textarea id="contato-mensagem" rows="4" name="message" value={form.message} onChange={handleChange} placeholder="Conte o que procura: peça, ocasião, quantidade" className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl outline-none focus:border-primaria focus:bg-white focus:ring-4 focus:ring-primaria/10 transition-all text-sm font-medium text-gray-700 resize-none" required></textarea>
                 </div>
                 {status === 'error' && (
-                  <p className="text-rose-600 text-sm font-medium">{errorMessage}</p>
+                  <p role="alert" className="text-rose-600 text-sm font-medium">{errorMessage}</p>
                 )}
                 <button type="submit" disabled={status === 'sending'} className="w-full bg-primaria text-white font-bold uppercase tracking-widest text-xs py-5 rounded-xl hover:bg-[#5556A0] transition-transform hover:-translate-y-1 mt-2 shadow-lg hover:shadow-primaria/40 disabled:opacity-60 disabled:hover:translate-y-0">
-                  {status === 'sending' ? 'Enviando...' : 'Enviar E-mail'}
+                  {status === 'sending' ? 'Enviando...' : 'Enviar mensagem'}
                 </button>
               </form>
             )}
@@ -89,7 +94,7 @@ function Contact() {
                 
                 <a href="https://wa.me/5591991145232" target="_blank" rel="noreferrer" className="flex items-center gap-5 group">
                   <div className="w-14 h-14 rounded-full bg-[#E8F8F0] text-[#25D366] flex flex-shrink-0 items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                    <img src="https://api.iconify.design/logos:whatsapp-icon.svg" className="w-6 h-6" alt="WhatsApp" />
+                    <img src="/whatsapp.svg" className="w-6 h-6" alt="" />
                   </div>
                   <div>
                     <h4 className="font-bold text-secundaria font-sans text-lg">WhatsApp</h4>
@@ -99,7 +104,7 @@ function Contact() {
 
                 <a href="mailto:ola@cameliahandcraft.com.br" className="flex items-center gap-5 group">
                   <div className="w-14 h-14 rounded-full bg-gray-100 text-gray-600 flex flex-shrink-0 items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                    <img src="https://api.iconify.design/logos:google-gmail.svg" className="w-6 h-6" alt="Gmail" />
+                    <img src="/gmail.svg" className="w-6 h-6" alt="" />
                   </div>
                   <div>
                     <h4 className="font-bold text-secundaria font-sans text-lg">E-mail</h4>
@@ -109,7 +114,7 @@ function Contact() {
                 
                 <a href="https://instagram.com/camelia.handcraft" target="_blank" rel="noreferrer" className="flex items-center gap-5 group">
                   <div className="w-14 h-14 rounded-full bg-[#fcecf3] text-[#E1306C] flex flex-shrink-0 items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                    <img src="https://api.iconify.design/skill-icons:instagram.svg" className="w-6 h-6" alt="Instagram" />
+                    <img src="/instagram.svg" className="w-6 h-6" alt="" />
                   </div>
                   <div>
                     <h4 className="font-bold text-secundaria font-sans text-lg">Instagram</h4>

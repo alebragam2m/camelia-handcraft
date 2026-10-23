@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import DataSync from './components/DataSync';
 import SessionProvider from './components/SessionProvider';
@@ -17,7 +17,8 @@ import Checkout from './pages/Checkout';
 import LegalPage from './pages/LegalPage';
 
 // Admin Pages
-import AdminDashboard from './pages/AdminDashboard';
+// O painel só é baixado por quem abre /admin; a loja não carrega esse código.
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -74,7 +75,9 @@ function AppContent() {
           {/* ----- ADMIN MODULE (PRIVATE) ----- */}
           <Route path="/admin/*" element={
             <ProtectedRoute>
-              <AdminDashboard />
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-secundaria">Carregando painel...</div>}>
+                <AdminDashboard />
+              </Suspense>
             </ProtectedRoute>
           } />
 
